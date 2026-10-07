@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>DSA Visualizer – Mô Phỏng Thuật Toán Trực Quan</title>
   <meta name="description" content="Trang web trực quan hóa và mô phỏng từng bước 9 thuật toán cấu trúc dữ liệu và giải thuật phổ biến: Bubble, Selection, Insertion, Quick, Merge, Counting, Radix Sort và Linear, Binary Search.">
   
@@ -49,10 +49,10 @@
     <header class="app-header">
       <div class="brand-wrapper">
         <button id="btn-toggle-sidebar" class="btn btn-secondary btn-sm btn-sidebar-toggle" title="Đóng / mở danh sách thuật toán">
-          ☰ Danh sách
+          <span class="btn-icon">☰</span> <span class="btn-text">Danh sách</span>
         </button>
         <div class="brand-logo-icon">DSA</div>
-        <div>
+        <div class="brand-text-group">
           <span class="brand-title">DSA Visualizer</span>
           <span class="brand-tagline">Mô phỏng thuật toán</span>
         </div>
@@ -60,19 +60,19 @@
       </div>
       <div class="header-actions">
         <button id="btn-toggle-sound" class="btn btn-secondary btn-sm" aria-label="Bật hoặc tắt âm thanh thuật toán" title="Bật / Tắt âm thanh (Phím M)">
-          🔊 Âm thanh
+          <span class="btn-icon">🔊</span> <span class="btn-text">Âm thanh</span>
         </button>
-        <button id="btn-config-array" class="btn btn-primary btn-sm" aria-label="Khởi tạo & Cấu hình mảng dữ liệu">
-          ⚙️ Tuỳ chọn mảng
+        <button id="btn-config-array" class="btn btn-primary btn-sm" aria-label="Khởi tạo & Cấu hình mảng dữ liệu" title="Khởi tạo & Cấu hình mảng dữ liệu">
+          <span class="btn-icon">⚙️</span> <span class="btn-text">Tuỳ chọn mảng</span>
         </button>
-        <button id="btn-view-code" class="btn btn-secondary btn-sm" aria-label="Xem mã nguồn C++, Java, Python, JS">
-          💻 Xem mã nguồn
+        <button id="btn-view-code" class="btn btn-secondary btn-sm" aria-label="Xem mã nguồn C++, Java, Python, JS" title="Xem mã nguồn C++, Java, Python, JS">
+          <span class="btn-icon">💻</span> <span class="btn-text">Mã nguồn</span>
         </button>
-        <button id="btn-overview" class="btn btn-secondary btn-sm" aria-label="Mở bảng so sánh tổng quan">
-          📊 Bảng so sánh
+        <button id="btn-overview" class="btn btn-secondary btn-sm" aria-label="Mở bảng so sánh tổng quan" title="Bảng so sánh tổng quan">
+          <span class="btn-icon">📊</span> <span class="btn-text">So sánh</span>
         </button>
-        <button id="btn-theme-toggle" class="btn btn-secondary btn-sm" aria-label="Chuyển chế độ sáng tối">
-          ☀️ Sáng
+        <button id="btn-theme-toggle" class="btn btn-secondary btn-sm" aria-label="Chuyển chế độ sáng tối" title="Chuyển chế độ sáng tối">
+          <span class="btn-icon">☀️</span> <span class="btn-text">Sáng</span>
         </button>
       </div>
     </header>

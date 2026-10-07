@@ -438,14 +438,16 @@ export class UIController {
     this.appBody?.classList.toggle('sidebar-collapsed');
     const isCollapsed = this.appBody?.classList.contains('sidebar-collapsed');
     if (this.btnToggleSidebar) {
-      this.btnToggleSidebar.innerHTML = isCollapsed ? '☰ Mở menu' : '☰ Thu gọn';
+      this.btnToggleSidebar.innerHTML = isCollapsed
+        ? '<span class="btn-icon">☰</span> <span class="btn-text">Danh sách</span>'
+        : '<span class="btn-icon">◀</span> <span class="btn-text">Thu gọn</span>';
     }
   }
 
   collapseSidebar() {
     this.appBody?.classList.add('sidebar-collapsed');
     if (this.btnToggleSidebar) {
-      this.btnToggleSidebar.innerHTML = '☰ Mở menu';
+      this.btnToggleSidebar.innerHTML = '<span class="btn-icon">☰</span> <span class="btn-text">Danh sách</span>';
     }
   }
 
@@ -778,7 +780,9 @@ export class UIController {
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', newTheme);
     if (this.btnThemeToggle) {
-      this.btnThemeToggle.textContent = newTheme === 'dark' ? '☀️ Sáng' : '🌙 Tối';
+      this.btnThemeToggle.innerHTML = newTheme === 'dark'
+        ? '<span class="btn-icon">☀️</span> <span class="btn-text">Sáng</span>'
+        : '<span class="btn-icon">🌙</span> <span class="btn-text">Tối</span>';
     }
   }
 
@@ -787,7 +791,9 @@ export class UIController {
    */
   updateSoundButton(isMuted) {
     if (!this.btnToggleSound) return;
-    this.btnToggleSound.innerHTML = isMuted ? '🔇 Tắt tiếng' : '🔊 Âm thanh';
+    this.btnToggleSound.innerHTML = isMuted
+      ? '<span class="btn-icon">🔇</span> <span class="btn-text">Tắt tiếng</span>'
+      : '<span class="btn-icon">🔊</span> <span class="btn-text">Âm thanh</span>';
     this.btnToggleSound.title = isMuted ? 'Âm thanh đang tắt (Bấm hoặc nhấn M để bật)' : 'Âm thanh đang bật (Bấm hoặc nhấn M để tắt)';
   }
 

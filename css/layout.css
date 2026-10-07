@@ -701,6 +701,7 @@ body {
   max-height: 340px; /* Tăng độ cao để hiển thị nhiều dòng hơn */
   overflow-y: auto;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background-color: var(--bg-app);
@@ -772,16 +773,28 @@ body {
 }
 
 /* ==========================================================================
-   Responsive Breakpoints
+   Tối Ưu Giao Diện Đa Nền Tảng (Cross-Platform Responsive System)
+   Tương thích hoàn hảo: Desktop, Laptop, iPad/Tablet, Mobile iOS & Android
+   Hỗ trợ xoay ngang (Landscape), khuyết màn hình (Notch/Dynamic Island)
    ========================================================================== */
 
+/* 1. Màn hình máy tính bảng lớn & Laptop nhỏ (<= 1200px) */
 @media (max-width: 1200px) {
   :root {
-    --side-panel-width: 320px;
-    --sidebar-width: 260px;
+    --side-panel-width: 300px;
+    --sidebar-width: 250px;
+  }
+
+  .app-header {
+    padding: 0 var(--space-4);
+  }
+
+  .header-actions {
+    gap: var(--space-2);
   }
 }
 
+/* 2. Màn hình Tablet ngang & nhỏ (<= 1024px) */
 @media (max-width: 1024px) {
   .app-body {
     grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
@@ -790,138 +803,607 @@ body {
   .app-body.sidebar-collapsed {
     grid-template-columns: 0px minmax(0, 1fr);
   }
+
+  .visualizer-wrapper {
+    min-height: 320px;
+  }
 }
 
+/* 3. Màn hình Tablet dọc & Điện thoại thông minh (<= 768px) */
 @media (max-width: 768px) {
+  :root {
+    --header-height: 56px;
+  }
+
+  /* Khung ứng dụng & Vùng an toàn viền màn hình (Safe Area Insets) */
+  .app-container {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
   .app-header {
-    padding: 0 var(--space-4);
+    padding: 0 var(--space-3);
+    height: var(--header-height);
   }
 
   .brand-tagline {
     display: none;
   }
 
+  .brand-logo-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
+
+  .brand-title {
+    font-size: var(--font-size-base);
+  }
+
+  .header-algo-pill {
+    display: none; /* Đã có tiêu đề thuật toán trên bảng canvas */
+  }
+
+  /* Thanh thao tác Header có thể cuộn ngang mượt mà khi quá nhiều nút */
+  .header-actions {
+    gap: 6px;
+    max-width: 65vw;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
+  }
+
+  .header-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .header-actions .btn {
+    height: 34px;
+    padding: 0 10px;
+    font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
   .app-body {
     display: flex;
     flex-direction: column;
-    padding-bottom: 105px;
+    padding-bottom: 110px; /* Chừa khoảng trống cho thanh điều khiển đáy cố định */
   }
 
+  /* Menu thuật toán dạng thanh lướt ngang ở trên */
   .sidebar {
     position: static;
     width: 100% !important;
     max-height: none;
     border-right: none;
     border-bottom: 1px solid var(--border-subtle);
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-2) var(--space-3);
     flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
-    gap: var(--space-3);
+    gap: var(--space-2);
     white-space: nowrap;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .sidebar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Khi bấm Thu gọn menu trên Mobile: Ẩn hoàn toàn để lấy trọn 100% không gian */
+  .app-body.sidebar-collapsed .sidebar {
+    display: none !important;
+    height: 0 !important;
+    padding: 0 !important;
   }
 
   .sidebar-top-actions {
+    display: none; /* Trên mobile nút ở Header đã điều khiển việc đóng/mở */
+  }
+
+  .sidebar-group {
+    display: inline-flex;
     flex-direction: row;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .sidebar-group-title {
+    font-size: 11px;
+    padding: 2px 6px;
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  .sidebar-algo-list {
+    display: inline-flex;
+    flex-direction: row;
+    gap: 4px;
+  }
+
+  .sidebar-algo-list li {
+    display: inline-block;
+  }
+
+  .algo-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: var(--radius-full);
+    white-space: nowrap;
+  }
+
+  .algo-btn-badge {
+    display: none; /* Rút gọn badge độ phức tạp trên thanh lướt mobile */
   }
 
   .main-stage {
-    padding: var(--space-3);
-    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
   }
 
+  /* --------------------------------------------------------------------------
+     Tránh va chạm (Collision Fix): Tách biệt Tiêu đề, Chế độ và Bộ nút phát
+     -------------------------------------------------------------------------- */
   .visualizer-wrapper {
-    padding: var(--space-3);
-    min-height: 340px;
+    padding: var(--space-2);
+    min-height: 310px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
   }
 
   .visualizer-corner-badge {
-    top: 10px;
-    left: 10px;
+    position: static;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 4px;
   }
 
-  .canvas-algo-title {
-    height: 30px;
+  .visualizer-corner-badge .canvas-algo-title {
+    align-self: flex-start;
+    height: 28px;
     font-size: 12px;
-    padding: 0 8px;
+    padding: 0 10px;
     border-radius: var(--radius-md);
+    max-width: calc(100% - 175px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .mode-switch-group {
-    padding: 2px;
-    gap: 2px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 3px;
+    gap: 4px;
+  }
+
+  .mode-switch-group::-webkit-scrollbar {
+    display: none;
   }
 
   .mode-switch-group .btn {
-    height: 26px;
-    font-size: 11px;
-    padding: 0 7px;
+    height: 28px;
+    font-size: 11.5px;
+    padding: 0 9px;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .visualizer-corner-controls {
-    top: 10px;
-    right: 10px;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 15;
   }
 
   .playback-buttons-corner {
     padding: 2px;
-    gap: 3px;
+    gap: 2px;
     border-radius: var(--radius-md);
   }
 
   .playback-buttons-corner .btn {
-    height: 26px;
-    min-width: 26px;
-    font-size: 11px;
+    height: 28px;
+    min-width: 28px;
+    font-size: 12px;
     border-radius: var(--radius-sm);
   }
 
   .playback-buttons-corner .btn-icon {
-    width: 26px;
+    width: 28px;
   }
 
   .playback-buttons-corner #btn-play {
-    padding: 0 8px;
-    font-size: 11px;
+    padding: 0 9px;
+    font-size: 12px;
     gap: 4px;
   }
 
   .visualizer-canvas-container {
-    padding: 56px var(--space-2) var(--space-2);
+    padding: 18px 4px 10px;
+    min-height: 240px;
+    -webkit-overflow-scrolling: touch;
   }
 
+  .bars-container {
+    gap: 8px;
+    min-height: 240px;
+    padding: 45px 4px 10px;
+  }
+
+  .bar-column {
+    min-width: 26px;
+    max-width: 48px;
+    border-radius: 10px 10px 4px 4px;
+    padding: 6px 2px 4px;
+  }
+
+  .bar-val-label {
+    font-size: 12.5px;
+  }
+
+  .bar-idx-badge {
+    font-size: 10.5px;
+  }
+
+  .pointer-badge-container {
+    top: -38px;
+  }
+
+  .pointer-badge {
+    font-size: 10px;
+    padding: 2px 7px;
+  }
+
+  .tile-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+  }
+
+  .tile-value {
+    font-size: 16px;
+  }
+
+  /* Hộp thông báo bước */
+  .step-message-box {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-sm);
+    min-height: 44px;
+    gap: var(--space-2);
+  }
+
+  /* Bảng chạy tay Trace Table */
+  .trace-table-card {
+    padding: var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .trace-table-header {
+    gap: 8px;
+  }
+
+  .trace-table-title {
+    font-size: 13.5px;
+  }
+
+  .trace-table th {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .trace-table td {
+    padding: 6px 8px;
+    font-size: 12.5px;
+  }
+
+  .trace-num {
+    width: 32px;
+    min-width: 32px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  /* Thanh điều khiển đáy cố định tiện cho ngón tay cái (Thumb-friendly mobile dock) */
   .controls-card {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     z-index: 50;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     border-left: none;
     border-right: none;
     border-bottom: none;
-    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.35);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    background-color: rgba(17, 24, 44, 0.95);
-    padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
-    gap: var(--space-2);
+    background-color: rgba(17, 24, 44, 0.96);
+    padding: 10px var(--space-3) calc(10px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
   }
 
   [data-theme="light"] .controls-card {
-    background-color: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
-    border-top: 1px solid #e1e7f0;
+    background-color: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.1);
+    border-top: 1px solid #dce4ef;
   }
 
-  .speed-control {
-    display: none;
+  .playback-row {
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .controls-live-stats {
+    gap: 6px;
+  }
+
+  .stat-badge {
+    padding: 4px 10px;
+    font-size: 11px;
+    gap: 5px;
+  }
+
+  .stat-badge-val {
+    font-size: 13px;
+  }
+
+  .progress-row {
+    gap: 8px;
+  }
+
+  .progress-row #step-counter {
+    font-size: 11px;
+    padding: 3px 8px;
+    min-width: 74px !important;
+  }
+
+  .input-range {
+    height: 6px;
+  }
+
+  .input-range::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Modal dạng Bottom Sheet vuốt từ dưới lên trên Mobile */
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
   }
 
   .modal-dialog {
-    max-height: 95vh;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    margin-top: auto;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 86vh !important;
+    border-radius: 20px 20px 0 0 !important;
+    margin-bottom: 0 !important;
+    border-bottom: none !important;
+  }
+
+  .modal-dialog::before {
+    content: "";
+    display: block;
+    width: 40px;
+    height: 4px;
+    border-radius: var(--radius-full);
+    background-color: var(--border-strong);
+    margin: 10px auto 0;
+    flex-shrink: 0;
+  }
+
+  .modal-header {
+    padding: 10px 16px;
+  }
+
+  .modal-body {
+    padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    gap: 12px;
+  }
+
+  .lang-tabs-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    padding-bottom: 8px;
+    gap: 6px;
+  }
+
+  .lang-tab {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .code-modal-pre {
+    max-height: 42vh;
+    font-size: 12px;
+  }
+
+  /* Chế độ toàn màn hình tối ưu cho tablet & mobile */
+  .visualizer-wrapper:fullscreen,
+  .visualizer-wrapper.is-fullscreen {
+    padding: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .visualizer-wrapper:fullscreen .visualizer-canvas-container,
+  .visualizer-wrapper.is-fullscreen .visualizer-canvas-container {
+    min-height: 280px !important;
+    padding: 68px 4px 10px !important;
+  }
+
+  .visualizer-wrapper:fullscreen .bars-container,
+  .visualizer-wrapper.is-fullscreen .bars-container {
+    min-height: 260px;
+    max-height: 65vh;
+    gap: 8px;
+  }
+
+  .visualizer-wrapper:fullscreen .bar-column,
+  .visualizer-wrapper.is-fullscreen .bar-column {
+    min-width: 24px;
+    max-width: 44px;
+  }
+
+  .visualizer-wrapper:fullscreen .tile-box,
+  .visualizer-wrapper.is-fullscreen .tile-box {
+    width: 46px;
+    height: 46px;
+  }
+
+  .visualizer-wrapper:fullscreen .visualizer-fullscreen-btn,
+  .visualizer-wrapper.is-fullscreen .visualizer-fullscreen-btn {
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    right: calc(14px + env(safe-area-inset-right, 0px));
   }
 }
+
+/* 4. Màn hình điện thoại nhỏ (<= 480px, iPhone SE, Galaxy Mini) */
+@media (max-width: 480px) {
+  .header-actions .btn .btn-text {
+    display: none; /* Chỉ hiển thị icon emoji để vừa khít 1 hàng trên màn hình siêu nhỏ */
+  }
+
+  .header-actions .btn {
+    min-width: 34px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .btn-sidebar-toggle .btn-text {
+    display: none;
+  }
+
+  .brand-title {
+    font-size: 14px;
+  }
+
+  .bars-container {
+    gap: 5px;
+    min-height: 220px;
+    padding: 38px 2px 8px;
+  }
+
+  .bar-column {
+    min-width: 20px;
+    max-width: 38px;
+    border-radius: 7px 7px 3px 3px;
+    padding: 4px 1px 3px;
+  }
+
+  .bar-val-label {
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .bar-idx-badge {
+    font-size: 9.5px;
+  }
+
+  .pointer-badge-container {
+    top: -34px;
+  }
+
+  .pointer-badge {
+    font-size: 9px;
+    padding: 1px 5px;
+  }
+
+  .tile-box {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+  }
+
+  .tile-value {
+    font-size: 14px;
+  }
+
+  .trace-table th:last-child,
+  .trace-table td:last-child {
+    min-width: 140px;
+  }
+
+  .preset-btns-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .preset-btn {
+    font-size: 11px;
+    padding: 7px 6px;
+  }
+
+  .victory-stats-grid {
+    gap: 8px;
+  }
+
+  .victory-stat-box {
+    padding: 8px 10px;
+  }
+
+  .victory-stat-val {
+    font-size: 16px;
+  }
+}
+
+/* 5. Chế độ Xoay Ngang trên Điện thoại (Landscape Mode) */
+@media (max-height: 520px) and (orientation: landscape) {
+  :root {
+    --header-height: 46px;
+  }
+
+  .app-body {
+    padding-bottom: 70px;
+  }
+
+  .sidebar {
+    padding: 4px 8px;
+  }
+
+  .visualizer-wrapper {
+    min-height: 200px;
+  }
+
+  .bars-container {
+    min-height: 190px;
+    max-height: 52vh;
+    padding: 32px 4px 6px;
+  }
+
+  .controls-card {
+    padding: 6px var(--space-4) calc(6px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .visualizer-wrapper:fullscreen .bars-container,
+  .visualizer-wrapper.is-fullscreen .bars-container {
+    min-height: 180px;
+    max-height: 52vh;
+    gap: 8px;
+  }
+
+  .visualizer-wrapper:fullscreen .bar-column,
+  .visualizer-wrapper.is-fullscreen .bar-column {
+    min-width: 22px;
+    max-width: 36px;
+  }
+
+  .visualizer-wrapper:fullscreen .tile-box,
+  .visualizer-wrapper.is-fullscreen .tile-box {
+    width: 38px;
+    height: 38px;
+  }
+}
+

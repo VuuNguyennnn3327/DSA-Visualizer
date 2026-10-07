@@ -20,8 +20,15 @@ export class InteractiveSortController {
     this.btnPracticeHint = document.getElementById('btn-practice-hint');
     this.selectedElement = null; // Dùng cho Click-to-Swap
     this.selectedIndex = null;
-    this.draggedElement = null;  // Dùng cho Drag & Drop
+    this.draggedElement = null;  // Dùng cho Drag & Drop chuột máy tính
     this.draggedIndex = null;
+
+    // Biến trạng thái kéo chạm trên màn hình cảm ứng điện thoại / tablet
+    this.touchStartX = 0;
+    this.touchStartY = 0;
+    this.touchStartTarget = null;
+    this.touchStartIndex = -1;
+    this.isTouchDragging = false;
 
     this.practiceEngine = new PracticeEngine();
 
@@ -52,7 +59,7 @@ export class InteractiveSortController {
   initEvents() {
     if (!this.canvasContainer) return;
 
-    // 1. Drag & Drop HTML5 Events
+    // 1. Drag & Drop HTML5 Events (Chuột máy tính / Desktop)
     this.canvasContainer.addEventListener('dragstart', (e) => this.handleDragStart(e));
     this.canvasContainer.addEventListener('dragover', (e) => this.handleDragOver(e));
     this.canvasContainer.addEventListener('dragenter', (e) => this.handleDragEnter(e));
@@ -60,7 +67,13 @@ export class InteractiveSortController {
     this.canvasContainer.addEventListener('drop', (e) => this.handleDrop(e));
     this.canvasContainer.addEventListener('dragend', () => this.handleDragEnd());
 
-    // 2. Click-to-Swap (hỗ trợ cả chạm di động và click chuột)
+    // 2. Touch Drag & Drop Events (Màn hình cảm ứng Mobile iOS / Android / iPad)
+    this.canvasContainer.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
+    this.canvasContainer.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+    this.canvasContainer.addEventListener('touchend', (e) => this.handleTouchEnd(e));
+    this.canvasContainer.addEventListener('touchcancel', () => this.handleTouchCancel());
+
+    // 3. Click-to-Swap (hỗ trợ cả chạm di động và click chuột)
     this.canvasContainer.addEventListener('click', (e) => this.handleClick(e));
 
     // 3. Hủy chọn nếu click ra ngoài vùng mô phỏng
@@ -222,6 +235,84 @@ export class InteractiveSortController {
 
     const allOver = this.canvasContainer.querySelectorAll('.drag-over');
     allOver.forEach(el => el.classList.remove('drag-over'));
+  }
+
+  /* --------------------------------------------------------------------------
+     Touch Drag & Drop trên màn hình cảm ứng di động (Mobile Touch Gestures)
+     -------------------------------------------------------------------------- */
+  handleTouchStart(e) {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const wrapper = this.getItemWrapper(touch.target);
+    if (!wrapper) return;
+
+    this.touchStartX = touch.clientX;
+    this.touchStartY = touch.clientY;
+    this.touchStartTarget = wrapper;
+    this.touchStartIndex = this.getItemIndex(wrapper);
+    this.isTouchDragging = false;
+  }
+
+  handleTouchMove(e) {
+    if (!this.touchStartTarget || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - this.touchStartX;
+    const dy = touch.clientY - this.touchStartY;
+
+    // Chỉ kích hoạt kéo khi vuốt quá ngưỡng 10px để không cản trở thao tác chạm click đơn
+    if (!this.isTouchDragging && Math.hypot(dx, dy) > 10) {
+      this.isTouchDragging = true;
+      player.pause();
+      this.touchStartTarget.classList.add('is-dragging');
+    }
+
+    if (this.isTouchDragging) {
+      if (e.cancelable) e.preventDefault(); // Ngăn cuộn trang web khi ngón tay đang kéo phần tử mảng
+      const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+      const targetWrapper = this.getItemWrapper(elemBelow);
+
+      const allItems = this.canvasContainer.querySelectorAll('.bar-wrapper, .tile-wrapper');
+      allItems.forEach(el => {
+        if (el === targetWrapper && el !== this.touchStartTarget) {
+          el.classList.add('drag-over');
+        } else {
+          el.classList.remove('drag-over');
+        }
+      });
+    }
+  }
+
+  handleTouchEnd(e) {
+    if (this.isTouchDragging && this.touchStartTarget) {
+      const changedTouch = e.changedTouches[0];
+      const elemBelow = document.elementFromPoint(changedTouch.clientX, changedTouch.clientY);
+      const targetWrapper = this.getItemWrapper(elemBelow);
+
+      if (targetWrapper && targetWrapper !== this.touchStartTarget) {
+        const targetIdx = this.getItemIndex(targetWrapper);
+        if (this.touchStartIndex !== -1 && targetIdx !== -1 && this.touchStartIndex !== targetIdx) {
+          this.executeSwap(this.touchStartIndex, targetIdx);
+        }
+      }
+    }
+
+    this.clearTouchDragState();
+  }
+
+  handleTouchCancel() {
+    this.clearTouchDragState();
+  }
+
+  clearTouchDragState() {
+    if (this.touchStartTarget) {
+      this.touchStartTarget.classList.remove('is-dragging');
+      this.touchStartTarget = null;
+    }
+    this.touchStartIndex = -1;
+    this.isTouchDragging = false;
+
+    const allOver = this.canvasContainer?.querySelectorAll('.drag-over');
+    allOver?.forEach(el => el.classList.remove('drag-over'));
   }
 
   /* --------------------------------------------------------------------------

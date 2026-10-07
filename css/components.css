@@ -22,6 +22,8 @@
   transition: all var(--transition-fast);
   text-decoration: none;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   white-space: nowrap;
 }
 
@@ -66,12 +68,21 @@
   transform: translateY(-1px);
 }
 
-.btn-icon {
+button.btn-icon,
+.btn.btn-icon {
   width: 40px;
   height: 40px;
   padding: 0;
   border-radius: var(--radius-md);
   font-size: 1.15rem;
+}
+
+span.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  line-height: 1;
 }
 
 .btn-sm {
@@ -202,6 +213,8 @@
   position: relative;
   user-select: none;
   -webkit-user-select: none;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
   cursor: grab;
   will-change: transform;
   transition: transform var(--slide-duration) var(--ease-spring);
@@ -459,6 +472,8 @@
   position: relative;
   user-select: none;
   -webkit-user-select: none;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
   cursor: grab;
   transition: transform var(--transition-normal);
 }
@@ -906,6 +921,13 @@
 .lang-tabs-group {
   display: flex;
   gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.lang-tabs-group::-webkit-scrollbar {
+  display: none;
 }
 
 .lang-tab {
@@ -919,6 +941,8 @@
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition: all var(--transition-fast);
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .lang-tab:hover {
