@@ -1,0 +1,294 @@
+/* ==========================================================================
+   DSA Visualizer - Design Tokens (css/tokens.css)
+   Khai báo biến màu, font chữ, khoảng cách, hiệu ứng và chế độ sáng/tối.
+   ========================================================================== */
+
+:root {
+  /* Typography */
+  --font-main: 'Be Vietnam Pro', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  
+  --font-size-xs: 0.75rem;     /* 12px */
+  --font-size-sm: 0.84375rem;  /* 13.5px */
+  --font-size-base: 0.9375rem; /* 15px */
+  --font-size-md: 1.0625rem;   /* 17px */
+  --font-size-lg: 1.25rem;     /* 20px */
+  --font-size-xl: 1.5rem;      /* 24px */
+  --font-size-2xl: 1.875rem;   /* 30px */
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Spacing */
+  --space-1: 0.25rem;  /* 4px */
+  --space-2: 0.5rem;   /* 8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-5: 1.25rem;  /* 20px */
+  --space-6: 1.5rem;   /* 24px */
+  --space-8: 2rem;     /* 32px */
+  --space-10: 2.5rem;  /* 40px */
+
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Shadows & Glow */
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 14px 30px -5px rgba(0, 0, 0, 0.18), 0 8px 12px -6px rgba(0, 0, 0, 0.08);
+
+  /* Animation & Transitions */
+  --ease-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 160ms ease;
+  --transition-normal: 280ms var(--ease-smooth);
+  --transition-slow: 420ms var(--ease-smooth);
+  --slide-duration: 380ms;
+
+  /* Dimensions */
+  --sidebar-width: 290px;
+  --side-panel-width: 360px;
+  --header-height: 64px;
+
+  /* Light Theme Palette - Tông màu sáng dịu êm, chống mỏi mắt (Warm Paper / Calm Slate) */
+  --bg-app: #f0f2f5;             /* Nền trang dịu nhẹ, không phải màu trắng tinh chói mắt */
+  --bg-surface: #ffffff;         /* Nền thẻ nội dung, thanh menu */
+  --bg-surface-elevated: #f8fafc;/* Nền phân tầng nhẹ */
+  --bg-subtle: #e5ebf2;          /* Nền các nút phụ, badge, slot */
+  --bg-hover: #dbe2ed;           /* Hiệu ứng hover mềm mại */
+  --bg-active: #ccd5e3;          /* Hiệu ứng active */
+
+  --text-main: #1e293b;          /* Chữ chính màu Slate đen dịu, dễ đọc, không gắt mắt */
+  --text-muted: #5e6f88;          /* Chữ phụ xám trung tính hài hòa */
+  --text-subtle: #8c9cb0;
+  --text-inverse: #ffffff;
+
+  --border-subtle: #e1e7f0;      /* Đường viền thanh thoát, không quá sắc */
+  --border-strong: #cbd5e1;
+  --border-focus: #3b82f6;
+
+  /* Brand / Primary */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-light: #eff6ff;
+  --primary-glow: rgba(37, 99, 235, 0.15); /* Ánh sáng dịu */
+
+  /* Algorithm State Colors (Light Mode) - Giảm độ rực, bớt chói lóa, đổ bóng êm ái */
+  --state-default: #475569;
+  --state-default-bg: #e2e8f0;
+  --state-default-grad: linear-gradient(180deg, #64748b 0%, #475569 100%);
+  --state-default-glow: 0 2px 8px rgba(71, 85, 105, 0.15);
+
+  --state-cmp: #b45309;          /* So sánh - Vàng hổ phách ấm, không chói */
+  --state-cmp-bg: #fef3c7;
+  --state-cmp-border: #f59e0b;
+  --state-cmp-grad: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+  --state-cmp-glow: 0 2px 8px rgba(217, 119, 6, 0.22);
+
+  --state-swp: #b91c1c;          /* Đổi chỗ - Đỏ trầm êm mắt */
+  --state-swp-bg: #fee2e2;
+  --state-swp-border: #ef4444;
+  --state-swp-grad: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  --state-swp-glow: 0 2px 8px rgba(220, 38, 38, 0.22);
+
+  --state-piv: #6d28d9;          /* Pivot / Chốt - Tím thẫm thanh lịch */
+  --state-piv-bg: #ede9fe;
+  --state-piv-border: #8b5cf6;
+  --state-piv-grad: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
+  --state-piv-glow: 0 2px 8px rgba(124, 58, 237, 0.22);
+
+  --state-ok: #15803d;           /* Đã đúng vị trí - Xanh ngọc lục bảo sẫm */
+  --state-ok-bg: #dcfce7;
+  --state-ok-border: #22c55e;
+  --state-ok-grad: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+  --state-ok-glow: 0 2px 8px rgba(22, 163, 74, 0.22);
+
+  --state-fnd: #047857;          /* Tìm thấy - Xanh ngọc êm dịu */
+  --state-fnd-bg: #d1fae5;
+  --state-fnd-border: #10b981;
+  --state-fnd-grad: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  --state-fnd-glow: 0 2px 8px rgba(5, 150, 105, 0.22);
+
+  --state-miss: #94a3b8;         /* Bị loại / Mờ */
+  --state-miss-bg: #f1f5f9;
+  --state-miss-border: #cbd5e1;
+  --state-miss-grad: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%);
+  --state-miss-glow: none;
+
+  /* Tag / Pointer Badge Colors */
+  --tag-i: #2563eb;
+  --tag-j: #0284c7;
+  --tag-pivot: #6d28d9;
+  --tag-min: #b45309;
+  --tag-mid: #047857;
+  --tag-lo: #475569;
+  --tag-hi: #64748b;
+}
+
+/* Dark Theme Palette (Mặc định phổ biến cho Visualizer) */
+[data-theme="dark"], :root:not([data-theme="light"]) {
+  --bg-app: #0a0f1d;
+  --bg-surface: #11182c;
+  --bg-surface-elevated: #18223d;
+  --bg-subtle: #16203a;
+  --bg-hover: #1f2d52;
+  --bg-active: #283a66;
+
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-subtle: #64748b;
+  --text-inverse: #0a0f1d;
+
+  --border-subtle: #1e2c4f;
+  --border-strong: #2c3f70;
+  --border-focus: #60a5fa;
+
+  --primary: #3b82f6;
+  --primary-hover: #60a5fa;
+  --primary-light: rgba(59, 130, 246, 0.16);
+  --primary-glow: rgba(59, 130, 246, 0.4);
+
+  --state-default: #475569;
+  --state-default-bg: #1e293b;
+  --state-default-grad: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+  --state-default-glow: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  --state-cmp: #fbbf24;
+  --state-cmp-bg: rgba(245, 158, 11, 0.18);
+  --state-cmp-border: #f59e0b;
+  --state-cmp-grad: linear-gradient(180deg, #f59e0b 0%, #b45309 100%);
+  --state-cmp-glow: 0 0 20px rgba(245, 158, 11, 0.5);
+
+  --state-swp: #f87171;
+  --state-swp-bg: rgba(239, 68, 68, 0.2);
+  --state-swp-border: #ef4444;
+  --state-swp-grad: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
+  --state-swp-glow: 0 0 22px rgba(239, 68, 68, 0.55);
+
+  --state-piv: #a78bfa;
+  --state-piv-bg: rgba(139, 92, 246, 0.2);
+  --state-piv-border: #8b5cf6;
+  --state-piv-grad: linear-gradient(180deg, #8b5cf6 0%, #6d28d9 100%);
+  --state-piv-glow: 0 0 20px rgba(139, 92, 246, 0.5);
+
+  --state-ok: #4ade80;
+  --state-ok-bg: rgba(34, 197, 94, 0.18);
+  --state-ok-border: #22c55e;
+  --state-ok-grad: linear-gradient(180deg, #22c55e 0%, #15803d 100%);
+  --state-ok-glow: 0 0 18px rgba(34, 197, 94, 0.45);
+
+  --state-fnd: #34d399;
+  --state-fnd-bg: rgba(16, 185, 129, 0.22);
+  --state-fnd-border: #10b981;
+  --state-fnd-grad: linear-gradient(180deg, #10b981 0%, #047857 100%);
+  --state-fnd-glow: 0 0 25px rgba(16, 185, 129, 0.6);
+
+  --state-miss: #334155;
+  --state-miss-bg: rgba(15, 23, 42, 0.7);
+  --state-miss-border: #1e293b;
+  --state-miss-grad: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  --state-miss-glow: none;
+
+  --tag-i: #3b82f6;
+  --tag-j: #0ea5e9;
+  --tag-pivot: #a78bfa;
+  --tag-min: #fbbf24;
+  --tag-mid: #10b981;
+  --tag-lo: #64748b;
+  --tag-hi: #94a3b8;
+}
+
+/* Ép kiểu Light Mode nếu người dùng bấm nút đổi (Tông màu sáng dịu êm, chống mỏi mắt) */
+[data-theme="light"] {
+  --bg-app: #f0f2f5;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f8fafc;
+  --bg-subtle: #e5ebf2;
+  --bg-hover: #dbe2ed;
+  --bg-active: #ccd5e3;
+
+  --text-main: #1e293b;
+  --text-muted: #5e6f88;
+  --text-subtle: #8c9cb0;
+  --text-inverse: #ffffff;
+
+  --border-subtle: #e1e7f0;
+  --border-strong: #cbd5e1;
+  --border-focus: #3b82f6;
+
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-light: #eff6ff;
+  --primary-glow: rgba(37, 99, 235, 0.15);
+
+  --state-default: #475569;
+  --state-default-bg: #e2e8f0;
+  --state-default-grad: linear-gradient(180deg, #64748b 0%, #475569 100%);
+  --state-default-glow: 0 2px 8px rgba(71, 85, 105, 0.15);
+
+  --state-cmp: #b45309;
+  --state-cmp-bg: #fef3c7;
+  --state-cmp-border: #f59e0b;
+  --state-cmp-grad: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+  --state-cmp-glow: 0 2px 8px rgba(217, 119, 6, 0.22);
+
+  --state-swp: #b91c1c;
+  --state-swp-bg: #fee2e2;
+  --state-swp-border: #ef4444;
+  --state-swp-grad: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  --state-swp-glow: 0 2px 8px rgba(220, 38, 38, 0.22);
+
+  --state-piv: #6d28d9;
+  --state-piv-bg: #ede9fe;
+  --state-piv-border: #8b5cf6;
+  --state-piv-grad: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
+  --state-piv-glow: 0 2px 8px rgba(124, 58, 237, 0.22);
+
+  --state-ok: #15803d;
+  --state-ok-bg: #dcfce7;
+  --state-ok-border: #22c55e;
+  --state-ok-grad: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+  --state-ok-glow: 0 2px 8px rgba(22, 163, 74, 0.22);
+
+  --state-fnd: #047857;
+  --state-fnd-bg: #d1fae5;
+  --state-fnd-border: #10b981;
+  --state-fnd-grad: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  --state-fnd-glow: 0 2px 8px rgba(5, 150, 105, 0.22);
+
+  --state-miss: #94a3b8;
+  --state-miss-bg: #f1f5f9;
+  --state-miss-border: #cbd5e1;
+  --state-miss-grad: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%);
+  --state-miss-glow: none;
+
+  --tag-i: #2563eb;
+  --tag-j: #0284c7;
+  --tag-pivot: #6d28d9;
+  --tag-min: #b45309;
+  --tag-mid: #047857;
+  --tag-lo: #475569;
+  --tag-hi: #64748b;
+}
+
+/* Tôn trọng prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0s !important;
+    --transition-normal: 0s !important;
+    --transition-slow: 0s !important;
+    --slide-duration: 0s !important;
+  }
+  
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

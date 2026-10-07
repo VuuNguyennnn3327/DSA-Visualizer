@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DSA Visualizer – Mô Phỏng Thuật Toán Trực Quan</title>
+  <meta name="description" content="Trang web trực quan hóa và mô phỏng từng bước 9 thuật toán cấu trúc dữ liệu và giải thuật phổ biến: Bubble, Selection, Insertion, Quick, Merge, Counting, Radix Sort và Linear, Binary Search.">
+  
+  <!-- Google Fonts: Be Vietnam Pro & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+  <!-- Thông báo hướng dẫn nếu mở trực tiếp bằng giao thức file:// -->
+  <div id="file-protocol-warning" style="display: none; position: fixed; inset: 0; background: rgba(11, 17, 32, 0.95); z-index: 9999; padding: 24px; overflow-y: auto;">
+    <div style="max-width: 650px; margin: 40px auto; background: #1e293b; color: #f1f5f9; border: 2px solid #3b82f6; border-radius: 16px; padding: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); font-family: system-ui, -apple-system, sans-serif; line-height: 1.6;">
+      <h2 style="color: #60a5fa; margin-bottom: 16px; font-size: 22px; display: flex; align-items: center; gap: 10px;">
+        ⚠️ Bạn đang mở trang web trực tiếp qua giao thức file://
+      </h2>
+      <p style="margin-bottom: 16px;">
+        Do dự án sử dụng chuẩn tách module <strong>JavaScript ES Modules (import / export)</strong>, các trình duyệt web hiện đại (Chrome, Edge, Firefox) áp dụng chính sách an ninh <strong>CORS</strong> sẽ chặn không cho file nạp trực tiếp qua giao thức <code>file://</code> (khi nhấp đúp file).
+      </p>
+      <div style="background: #0f172a; padding: 18px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+        <strong style="color: #fbbf24; font-size: 16px;">Cách chạy đúng (chỉ 1 thao tác):</strong>
+        <ol style="margin-top: 10px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
+          <li>Trong <strong>Visual Studio Code</strong>: Cài đặt tiện ích mở rộng <strong>Live Server</strong> (Ritwick Dey).</li>
+          <li>Nhấp chuột phải vào file <code>index.html</code> ➔ Chọn <strong>"Open with Live Server"</strong> (hoặc bấm nút "Go Live" ở góc dưới bên phải VS Code).</li>
+          <li>Trang web sẽ tự động mở tại <code>http://127.0.0.1:5500/index.html</code> với đầy đủ các cột, ô số và thanh điều khiển!</li>
+          <li><em>(Cách khác nếu có Node.js: Mở Terminal gõ lệnh <code>npx serve</code>).</em></li>
+        </ol>
+      </div>
+    </div>
+  </div>
+  <script>
+    if (window.location.protocol === 'file:') {
+      var warnBox = document.getElementById('file-protocol-warning');
+      if (warnBox) warnBox.style.display = 'block';
+    }
+  </script>
+
+  <div class="app-container">
+    <!-- Header trên cùng -->
+    <header class="app-header">
+      <div class="brand-wrapper">
+        <button id="btn-toggle-sidebar" class="btn btn-secondary btn-sm btn-sidebar-toggle" title="Đóng / mở danh sách thuật toán">
+          ☰ Danh sách
+        </button>
+        <div class="brand-logo-icon">DSA</div>
+        <div>
+          <span class="brand-title">DSA Visualizer</span>
+          <span class="brand-tagline">Mô phỏng thuật toán</span>
+        </div>
+        <span id="header-algo-name" class="header-algo-pill">Bubble Sort</span>
+      </div>
+      <div class="header-actions">
+        <button id="btn-toggle-sound" class="btn btn-secondary btn-sm" aria-label="Bật hoặc tắt âm thanh thuật toán" title="Bật / Tắt âm thanh (Phím M)">
+          🔊 Âm thanh
+        </button>
+        <button id="btn-config-array" class="btn btn-primary btn-sm" aria-label="Khởi tạo & Cấu hình mảng dữ liệu">
+          ⚙️ Tuỳ chọn mảng
+        </button>
+        <button id="btn-view-code" class="btn btn-secondary btn-sm" aria-label="Xem mã nguồn C++, Java, Python, JS">
+          💻 Xem mã nguồn
+        </button>
+        <button id="btn-overview" class="btn btn-secondary btn-sm" aria-label="Mở bảng so sánh tổng quan">
+          📊 Bảng so sánh
+        </button>
+        <button id="btn-theme-toggle" class="btn btn-secondary btn-sm" aria-label="Chuyển chế độ sáng tối">
+          ☀️ Sáng
+        </button>
+      </div>
+    </header>
+
+    <!-- Thân ứng dụng: 3 cột (Có thể thu gọn sidebar để bảng nở rộng to ra) -->
+    <div id="app-body" class="app-body">
+      <!-- Cột 1: Sidebar danh sách thuật toán -->
+      <aside class="sidebar" aria-label="Danh sách thuật toán">
+        <div class="sidebar-top-actions">
+          <button id="btn-collapse-sidebar" class="btn btn-secondary btn-sm" title="Thu gọn menu" style="width: 100%;">
+            ◀ Thu gọn menu
+          </button>
+          <button id="btn-sidebar-overview" class="btn btn-outline btn-sm sidebar-overview-btn">
+            📊 Bảng so sánh tổng quan
+          </button>
+        </div>
+        <nav id="sidebar-groups" class="sidebar-groups-container">
+          <!-- Render động từ ui.js -->
+        </nav>
+      </aside>
+
+      <!-- Cột 2: Khu vực trung tâm mô phỏng, điều khiển & BẢNG CHẠY TAY TO RỘNG -->
+      <main class="main-stage">
+        <!-- Vùng vẽ mô phỏng mảng + vùng phụ trợ -->
+        <section class="visualizer-wrapper">
+          <!-- Tên thuật toán tiếng Anh & Cụm nút chuyển chế độ (Xếp tự do / Làm bài) + Nút Làm lại -->
+          <div class="visualizer-corner-badge">
+            <span id="canvas-algo-title" class="canvas-algo-title">Bubble Sort</span>
+            <div id="mode-switch-group" class="mode-switch-group">
+              <button id="btn-mode-setup" class="btn btn-secondary btn-sm mode-btn" title="Chế độ Xếp mảng tự do: Kéo thả tạo đề bài mảng theo ý muốn (không ghi bước)">
+                ✏️ Xếp tự do
+              </button>
+              <button id="btn-mode-practice" class="btn btn-primary btn-sm mode-btn active" title="Chế độ Thực hành: Bắt đầu làm bài, ghi nhận bước và kiểm tra đúng/sai theo thuật toán">
+                🎯 Làm bài
+              </button>
+              <button id="btn-practice-hint" class="btn btn-secondary btn-sm mode-btn" title="Xem gợi ý bước kế tiếp (phím H)">
+                💡 Gợi ý
+              </button>
+              <button id="btn-restart-practice" class="btn btn-secondary btn-sm btn-restart-corner" title="Làm lại từ đầu mảng đề bài khi làm sai hoặc muốn bắt đầu lại">
+                🔄 Làm lại
+              </button>
+            </div>
+          </div>
+
+          <!-- Các nút thực thi ở góc trên bên phải bảng phần tử -->
+          <div class="visualizer-corner-controls">
+            <div class="playback-buttons playback-buttons-corner">
+              <button id="btn-first" class="btn btn-secondary btn-icon" title="Về bước đầu tiên" aria-label="Về bước đầu tiên">⏮</button>
+              <button id="btn-prev" class="btn btn-secondary btn-icon" title="Bước trước (←)" aria-label="Bước trước">◀</button>
+              <button id="btn-play" class="btn btn-primary" title="Chạy hoặc Tạm dừng (Phím Space)" aria-label="Chạy hoặc dừng">
+                <span>▶</span><span>Chạy</span>
+              </button>
+              <button id="btn-next" class="btn btn-secondary btn-icon" title="Bước tiếp theo (→)" aria-label="Bước tiếp">▶</button>
+              <button id="btn-last" class="btn btn-secondary btn-icon" title="Đến bước cuối cùng" aria-label="Đến bước cuối">⏭</button>
+            </div>
+          </div>
+
+          <div id="visualizer-canvas" class="visualizer-canvas-container" aria-live="polite">
+            <!-- Render động bởi renderer.js -->
+          </div>
+          <div id="auxiliary-area" class="auxiliary-container">
+            <!-- Vùng phụ trợ: buckets, mảng đếm, nửa merge -->
+          </div>
+
+          <!-- Nút phóng to / thu nhỏ ô vuông ở góc dưới bên phải -->
+          <button id="btn-fullscreen-toggle" class="visualizer-fullscreen-btn" title="Phóng to bảng phần tử" aria-label="Phóng to hoặc thu nhỏ bảng phần tử">
+            <!-- Icon Phóng to (ô vuông 4 góc mở rộng) -->
+            <svg class="fs-icon-expand" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+            </svg>
+            <!-- Icon Thu nhỏ (ô vuông 4 góc thu vào) -->
+            <svg class="fs-icon-compress" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+              <path d="M4 14h6v6m10-10h-6V4m0 6 7-7M3 21l7-7" />
+            </svg>
+          </button>
+        </section>
+
+        <!-- Câu giải thích bước hiện tại -->
+        <div id="step-message-box" class="step-message-box">
+          <span class="step-message-icon">💡</span>
+          <span id="step-message-text">Đang tải mô phỏng...</span>
+        </div>
+
+        <!-- Thanh điều khiển: Thống kê, Tốc độ & Thanh trượt tiến trình -->
+        <section class="controls-card" aria-label="Thanh điều khiển tiến trình">
+          <div class="playback-row">
+            <!-- Bộ đếm thống kê so sánh / đổi chỗ thời gian thực -->
+            <div class="controls-live-stats">
+              <div class="stat-badge stat-cmp-badge" title="Số lần so sánh đã thực hiện">
+                <span class="stat-badge-icon">🔍</span>
+                <span class="stat-badge-label">So sánh:</span>
+                <strong id="stat-comparisons" class="stat-badge-val">0</strong>
+              </div>
+              <div class="stat-badge stat-swp-badge" title="Số lần đổi chỗ hoặc ghi mảng">
+                <span class="stat-badge-icon">🔄</span>
+                <span class="stat-badge-label">Đổi chỗ / Ghi:</span>
+                <strong id="stat-swaps" class="stat-badge-val">0</strong>
+              </div>
+            </div>
+
+            <!-- Điều chỉnh tốc độ chạy -->
+            <div class="speed-control">
+              <span>Tốc độ:</span>
+              <input id="speed-slider" type="range" class="input-range" min="1" max="10" value="6" aria-label="Tốc độ mô phỏng">
+              <span id="speed-val-label" class="algo-btn-badge">2.0x</span>
+            </div>
+          </div>
+
+          <!-- Thanh kéo tua bước -->
+          <div class="progress-row">
+            <span id="step-counter" class="algo-btn-badge" style="min-width: 90px;">Bước 0 / 0</span>
+            <input id="step-slider" type="range" class="input-range" min="0" max="0" value="0" aria-label="Kéo chọn bước">
+          </div>
+        </section>
+
+        <!-- Bảng chạy tay từng bước (Trace Table) với dấu <-> (MỞ RỘNG TO RÕ RÀNG) -->
+        <section class="trace-table-card" aria-label="Bảng chạy tay từng bước">
+          <div class="trace-table-header">
+            <div class="trace-table-title">
+              <span>📋 Bảng chạy tay từng bước (Trace Table)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <span style="font-size: var(--font-size-xs); color: var(--text-muted);">
+                (Nhấp vào dòng bất kỳ để nhảy ngay tới bước đó)
+              </span>
+              <button id="btn-export-trace" class="btn btn-secondary btn-sm" title="Xuất toàn bộ bảng chạy tay ra định dạng PDF chuẩn A4 để in hoặc nộp bài">
+                📄 Xuất PDF
+              </button>
+            </div>
+          </div>
+          <div class="trace-table-wrapper">
+            <table class="trace-table">
+              <thead>
+                <tr>
+                  <th style="width: 85px;">Bước</th>
+                  <th style="width: 140px;">Hành động</th>
+                  <th>Thực thi mảng (&lt;-&gt;)</th>
+                </tr>
+              </thead>
+              <tbody id="trace-table-body">
+                <!-- Render động bởi renderer.js -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Nút & Khung xem chi tiết mô tả thuật toán khi lướt xuống dưới -->
+        <section class="algo-detail-bottom-section">
+          <button id="btn-toggle-algo-detail" class="btn-detail-trigger" aria-expanded="false" title="Xem thông tin chi tiết, độ phức tạp và nguyên lý thuật toán">
+            <span>📖</span>
+            <span id="btn-toggle-detail-text">Xem chi tiết mô tả thuật toán</span>
+            <span id="detail-chevron" class="detail-chevron">▼</span>
+          </button>
+
+          <div id="algo-detail-dropdown" class="algo-detail-card" style="display: none;">
+            <div class="algo-detail-header">
+              <div class="algo-title-group" style="display: flex; align-items: center; gap: 10px;">
+                <h3 id="algo-title" style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--text-main);">Bubble Sort</h3>
+                <span id="algo-group-badge" class="algo-group-badge">Sắp xếp O(n²)</span>
+              </div>
+              <div class="complexity-pills">
+                <div class="complexity-pill">
+                  <span class="complexity-pill-label">Xấu nhất:</span>
+                  <span id="complexity-worst" class="complexity-pill-val">O(n²)</span>
+                </div>
+                <div class="complexity-pill">
+                  <span class="complexity-pill-label">Tốt nhất:</span>
+                  <span id="complexity-best" class="complexity-pill-val">O(n)</span>
+                </div>
+                <div class="complexity-pill">
+                  <span class="complexity-pill-label">Bộ nhớ:</span>
+                  <span id="complexity-space" class="complexity-pill-val">O(1)</span>
+                </div>
+                <div class="complexity-pill">
+                  <span class="complexity-pill-label">Ổn định:</span>
+                  <span id="complexity-stable" class="complexity-pill-val">Có</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="algo-detail-body">
+              <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); color: var(--text-main); margin-bottom: 6px;">
+                💡 Nguyên lý hoạt động:
+              </h4>
+              <p id="algo-description" class="algo-desc-detail"></p>
+              <div id="algo-analogy" class="analogy-badge-detail"></div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal Tuỳ Chọn & Khởi Tạo Mảng Dữ Liệu (Mở từ thanh trên) -->
+  <div id="array-modal-backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="array-modal-title">
+    <div class="modal-dialog modal-dialog-md">
+      <div class="modal-header">
+        <h3 id="array-modal-title" style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); display: flex; align-items: center; gap: 8px;">
+          ⚙️ Tuỳ Chọn & Khởi Tạo Mảng Dữ Liệu
+        </h3>
+        <button id="btn-close-array-modal" class="btn btn-secondary btn-sm" aria-label="Đóng cửa sổ">✕ Đóng</button>
+      </div>
+      <div class="modal-body">
+        <!-- 1. Chọn số phần tử & Nút tạo ngẫu nhiên -->
+        <div class="modal-section-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+            <div>
+              <label for="array-size-input" class="form-label" style="margin-bottom: 2px;">
+                Số lượng phần tử: <strong id="array-size-label" style="color: var(--primary); font-size: 1.15rem;">10</strong>
+              </label>
+              <span style="font-size: var(--font-size-xs); color: var(--text-muted);">(Cho phép từ 5 đến 20 số)</span>
+            </div>
+            <button id="btn-random-array" class="btn btn-primary">
+              🎲 Tạo mảng ngẫu nhiên mới
+            </button>
+          </div>
+          <input id="array-size-input" type="range" class="input-range" style="width: 100%;" min="5" max="20" value="10">
+        </div>
+
+        <!-- 2. Kịch bản mảng mẫu kiểm thử (Edge Cases) -->
+        <div class="modal-section-card">
+          <label class="form-label" style="font-weight: var(--font-weight-bold); margin-bottom: 6px;">
+            ⚡ Kịch bản mảng mẫu (Edge Cases):
+          </label>
+          <div class="preset-btns-grid">
+            <button id="btn-preset-random" class="btn btn-secondary btn-sm preset-btn" data-preset="random" title="Mảng ngẫu nhiên thông thường">
+              🎲 Ngẫu nhiên
+            </button>
+            <button id="btn-preset-sorted" class="btn btn-secondary btn-sm preset-btn" data-preset="sorted" title="Mảng đã sắp xếp sẵn tăng dần (Best Case)">
+              📈 Đã sắp xếp (Best)
+            </button>
+            <button id="btn-preset-reverse" class="btn btn-secondary btn-sm preset-btn" data-preset="reverse" title="Mảng đảo ngược giảm dần (Worst Case)">
+              📉 Đảo ngược (Worst)
+            </button>
+            <button id="btn-preset-nearly" class="btn btn-secondary btn-sm preset-btn" data-preset="nearly" title="Mảng gần như đã sắp xếp (chỉ 1-2 vị trí lệch)">
+              ⚡ Gần như sắp xếp
+            </button>
+            <button id="btn-preset-duplicates" class="btn btn-secondary btn-sm preset-btn" data-preset="duplicates" title="Mảng chứa nhiều giá trị trùng lặp nhau">
+              👯 Có trùng lặp
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. Tự nhập dãy số theo ý muốn -->
+        <div class="modal-section-card">
+          <label for="custom-array-input" class="form-label" style="font-weight: var(--font-weight-bold); margin-bottom: 6px;">
+            ✏️ Tự nhập mảng tùy chỉnh (phân cách bằng dấu phẩy hoặc khoảng trắng):
+          </label>
+          <div style="display: flex; gap: 8px;">
+            <input id="custom-array-input" type="text" class="input-text" style="flex: 1;" placeholder="Ví dụ: 50, 34, 67, 67, 89, 58, 41">
+            <button id="btn-apply-custom" class="btn btn-secondary">
+              ✓ Áp dụng mảng
+            </button>
+          </div>
+          <div id="input-rule-hint" class="input-feedback" style="color: var(--text-muted); margin-top: 6px;"></div>
+          <div id="input-feedback" class="input-feedback"></div>
+        </div>
+
+        <!-- 3. Giá trị cần tìm (cho Linear/Binary Search) -->
+        <div id="search-target-group" class="modal-section-card" style="display: none;">
+          <label for="search-target-input" class="form-label" style="font-weight: var(--font-weight-bold); margin-bottom: 6px;">
+            🎯 Giá trị cần tìm (Target):
+          </label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input id="search-target-input" type="number" class="input-number" style="width: 120px;" value="25">
+            <button id="btn-apply-target" class="btn btn-outline btn-sm">Tìm giá trị này</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: var(--space-3) var(--space-6); border-top: 1px solid var(--border-subtle); display: flex; justify-content: flex-end;">
+        <button id="btn-finish-array-modal" class="btn btn-primary btn-sm">
+          ✓ Xong
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Xem Mã Nguồn Theo Từng Ngôn Ngữ (C++, Java, Python, JavaScript, Mã Giả) -->
+  <div id="code-modal-backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="code-modal-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="code-modal-title" style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); display: flex; align-items: center; gap: 8px;">
+          💻 Mã Nguồn Cài Đặt Thuật Toán
+        </h3>
+        <button id="btn-close-code-modal" class="btn btn-secondary btn-sm" aria-label="Đóng cửa sổ">✕ Đóng</button>
+      </div>
+      <div class="modal-body">
+        <div class="lang-tabs-container">
+          <div class="lang-tabs-group">
+            <button class="lang-tab active" data-lang="cpp">C++</button>
+            <button class="lang-tab" data-lang="java">Java</button>
+            <button class="lang-tab" data-lang="python">Python</button>
+            <button class="lang-tab" data-lang="javascript">JavaScript</button>
+            <button class="lang-tab" data-lang="pseudo">Mã giả</button>
+          </div>
+          <button id="btn-copy-code" class="btn btn-secondary btn-sm">
+            📋 Sao chép mã
+          </button>
+        </div>
+
+        <pre class="code-modal-pre"><code id="code-modal-content">Đang tải mã nguồn...</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Bảng So Sánh Tổng Quan 9 Thuật Toán -->
+  <div id="overview-modal-backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="overview-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="overview-title" style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold);">
+          📊 Bảng So Sánh Tổng Quan 9 Thuật Toán DSA
+        </h3>
+        <button id="btn-close-overview" class="btn btn-secondary btn-sm" aria-label="Đóng cửa sổ">✕ Đóng</button>
+      </div>
+      <div class="modal-body">
+        <div class="overview-table-container">
+          <table class="overview-table">
+            <thead>
+              <tr>
+                <th>Thuật toán</th>
+                <th>Phân nhóm</th>
+                <th>Thời gian xấu nhất</th>
+                <th>Thời gian tốt nhất</th>
+                <th>Bộ nhớ phụ</th>
+                <th>Ổn định</th>
+                <th>Khi nào nên dùng?</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="overview-table-body">
+              <!-- Render động từ ui.js -->
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          <h4 style="font-size: var(--font-size-base); font-weight: var(--font-weight-bold); margin-bottom: 8px;">
+            📖 Giải thích nhanh ký hiệu độ phức tạp Big-O: O(f(n))
+          </h4>
+          <p style="font-size: var(--font-size-xs); color: var(--text-muted); margin-bottom: 12px;">
+            Ký hiệu Big-O biểu diễn tốc độ tăng của thời gian chạy hoặc bộ nhớ sử dụng khi số lượng phần tử đầu vào (n) tăng lên.
+          </p>
+          <div class="big-o-guide-grid">
+            <div class="big-o-box">
+              <div class="big-o-notation">O(1) - Hằng số</div>
+              <div class="big-o-desc">Thời gian thực thi không đổi bất kể kích thước dữ liệu n lớn đến mức nào.</div>
+            </div>
+            <div class="big-o-box">
+              <div class="big-o-notation">O(log n) - Logarit</div>
+              <div class="big-o-desc">Rất nhanh; không gian tìm kiếm giảm một nửa sau mỗi bước (như Binary Search).</div>
+            </div>
+            <div class="big-o-box">
+              <div class="big-o-notation">O(n) - Tuyến tính</div>
+              <div class="big-o-desc">Thời gian chạy tỷ lệ thuận theo số lượng phần tử (như Linear Search).</div>
+            </div>
+            <div class="big-o-box">
+              <div class="big-o-notation">O(n log n) - Tuyến tính logarit</div>
+              <div class="big-o-desc">Tốc độ tối ưu cho các thuật toán sắp xếp so sánh (như Merge Sort, Quick Sort).</div>
+            </div>
+            <div class="big-o-box">
+              <div class="big-o-notation">O(n²) - Bậc hai</div>
+              <div class="big-o-desc">Thường có 2 vòng lặp lồng nhau (Bubble, Selection, Insertion Sort); chậm khi n lớn.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Chúc Mừng Hoàn Thành Thực Hành (Gamification Victory Modal) -->
+  <div id="victory-modal-backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="victory-modal-title">
+    <div class="modal-dialog modal-dialog-sm victory-dialog">
+      <div class="victory-card">
+        <div class="victory-icon-bounce">🎉🏆🎉</div>
+        <h3 id="victory-modal-title" class="victory-title">Tuyệt Vời! Bạn Đã Hoàn Thành!</h3>
+        <p id="victory-algo-name" class="victory-subtitle">Bạn đã tự tay sắp xếp chính xác mảng theo thuật toán</p>
+        
+        <div class="victory-stats-grid">
+          <div class="victory-stat-box">
+            <span class="victory-stat-icon">⏱️</span>
+            <span class="victory-stat-label">Thời gian</span>
+            <strong id="victory-stat-time" class="victory-stat-val">00:00</strong>
+          </div>
+          <div class="victory-stat-box">
+            <span class="victory-stat-icon">🎯</span>
+            <span class="victory-stat-label">Độ chính xác</span>
+            <strong id="victory-stat-accuracy" class="victory-stat-val">100%</strong>
+          </div>
+          <div class="victory-stat-box">
+            <span class="victory-stat-icon">✅</span>
+            <span class="victory-stat-label">Đúng</span>
+            <strong id="victory-stat-correct" class="victory-stat-val">0 bước</strong>
+          </div>
+          <div class="victory-stat-box">
+            <span class="victory-stat-icon">❌</span>
+            <span class="victory-stat-label">Lỗi thử sai</span>
+            <strong id="victory-stat-wrong" class="victory-stat-val">0 lần</strong>
+          </div>
+        </div>
+
+        <div class="victory-actions">
+          <button id="btn-victory-restart" class="btn btn-secondary">
+            🔄 Thử lại mảng mới
+          </button>
+          <button id="btn-close-victory" class="btn btn-primary">
+            ✓ Tuyệt vời!
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entry Script ES Module -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
