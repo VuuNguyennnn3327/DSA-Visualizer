@@ -39,6 +39,108 @@ export const PRACTICE_MISSIONS = {
     ]
   },
 
+  doublyLinkedList: {
+    title: 'Doubly Linked List (DSLK Đôi)',
+    tasks: [
+      {
+        id: 'insert_head',
+        label: '➕ Thêm đầu',
+        desc: 'Thêm một Node mới vào đầu danh sách (Head)',
+        hint: 'Nhập số vào ô Giá trị và bấm nút [➕ Thêm đầu] (Chi phí O(1))',
+        buttonId: 'btn-dll-insert-head'
+      },
+      {
+        id: 'insert_tail',
+        label: '➕ Thêm đuôi',
+        desc: 'Thêm một Node mới vào đuôi danh sách (Tail)',
+        hint: 'Nhập số vào ô Giá trị và bấm nút [➕ Thêm đuôi] (Chi phí O(1) trực tiếp)',
+        buttonId: 'btn-dll-insert-tail'
+      },
+      {
+        id: 'traverse_forward',
+        label: '➡️ Duyệt xuôi',
+        desc: 'Duyệt xuôi từ Head sang Tail qua con trỏ next',
+        hint: 'Bấm nút [➡️ Duyệt xuôi] để di chuyển theo chiều tiến',
+        buttonId: 'btn-dll-traverse-fwd'
+      },
+      {
+        id: 'traverse_backward',
+        label: '⬅️ Duyệt ngược',
+        desc: 'Duyệt ngược từ Tail về Head qua con trỏ prev',
+        hint: 'Bấm nút [⬅️ Duyệt ngược] - Tính năng độc quyền của DSLK Đôi',
+        buttonId: 'btn-dll-traverse-bwd'
+      },
+      {
+        id: 'reverse',
+        label: '🔄 Đảo ngược',
+        desc: 'Đảo ngược toàn bộ DSLK Đôi bằng cách swap(prev, next)',
+        hint: 'Bấm nút [🔄 Đảo ngược] để hoán đổi cặp con trỏ của từng Node',
+        buttonId: 'btn-dll-reverse'
+      }
+    ]
+  },
+
+  circularLinkedList: {
+    title: 'Circular Linked List (DSLK Vòng)',
+    tasks: [
+      {
+        id: 'insert_head',
+        label: '➕ Thêm đầu',
+        desc: 'Thêm node mới vào đầu và uốn vòng Tail.next trỏ về Head',
+        hint: 'Bấm nút [➕ Thêm đầu]',
+        buttonId: 'btn-cll-insert-head'
+      },
+      {
+        id: 'insert_tail',
+        label: '➕ Thêm đuôi',
+        desc: 'Thêm node mới vào đuôi và uốn vòng về Head',
+        hint: 'Bấm nút [➕ Thêm đuôi]',
+        buttonId: 'btn-cll-insert-tail'
+      },
+      {
+        id: 'round_robin',
+        label: '⚡ Round-Robin',
+        desc: 'Thực thi 1 lượt CPU Quantum xoay vòng',
+        hint: 'Bấm nút [⚡ Round-Robin(1 lượt)]',
+        buttonId: 'btn-cll-round-robin'
+      }
+    ]
+  },
+
+  deque: {
+    title: 'Deque (Hàng Đợi Hai Đầu)',
+    tasks: [
+      {
+        id: 'push_front',
+        label: '📥 Push Front',
+        desc: 'Đẩy một phần tử vào đầu trước của Deque',
+        hint: 'Bấm nút [📥 Push Front]',
+        buttonId: 'btn-deque-push-front'
+      },
+      {
+        id: 'push_back',
+        label: '📥 Push Back',
+        desc: 'Đẩy một phần tử vào đuôi sau của Deque',
+        hint: 'Bấm nút [📥 Push Back]',
+        buttonId: 'btn-deque-push-back'
+      },
+      {
+        id: 'pop_front',
+        label: '📤 Pop Front',
+        desc: 'Lấy phần tử ra từ đầu trước',
+        hint: 'Bấm nút [📤 Pop Front]',
+        buttonId: 'btn-deque-pop-front'
+      },
+      {
+        id: 'pop_back',
+        label: '📤 Pop Back',
+        desc: 'Lấy phần tử ra từ đuôi sau',
+        hint: 'Bấm nút [📤 Pop Back]',
+        buttonId: 'btn-deque-pop-back'
+      }
+    ]
+  },
+
   stack: {
     title: 'Ngăn Xếp (Stack)',
     tasks: [

@@ -13,6 +13,7 @@ import { soundFX } from './audio.js';
 import { exportTraceToPDF } from './export-trace.js';
 import { fireConfetti } from './confetti.js';
 import { getPracticeMission } from './practice-missions.js';
+import { linearInteractive } from './linear-interactive.js';
 
 export class UIController {
   constructor(renderer) {
@@ -127,6 +128,7 @@ export class UIController {
     this.updateSoundButton(soundFX.isMuted);
     this.renderSidebar();
     this.renderOverviewTable();
+    linearInteractive.init(this, this.renderer);
   }
 
   /**
@@ -1084,6 +1086,115 @@ export class UIController {
         state.computeSteps();
         state.notify('stepChange');
       });
+    } else if (type === 'doublyLinkedList') {
+      this.linearToolbarContainer.innerHTML = `
+        <span class="linear-toolbar-label">Thao tác DSLK Đôi:</span>
+        <div class="linear-input-group">
+          <input id="dll-input-val" type="number" class="linear-input-num" value="${Math.floor(Math.random() * 80) + 10}" min="1" max="99" placeholder="Giá trị x">
+          <input id="dll-input-idx" type="number" class="linear-input-num" value="1" min="0" max="7" style="width: 52px;" title="Vị trí chèn K (0-indexed)" placeholder="K">
+          <button id="btn-dll-insert-head" class="btn btn-primary btn-sm" title="Thêm node mới vào đầu danh sách (O(1))">➕ Thêm đầu</button>
+          <button id="btn-dll-insert-tail" class="btn btn-primary btn-sm" title="Thêm node mới vào cuối danh sách (O(1))">➕ Thêm đuôi</button>
+          <button id="btn-dll-insert-at" class="btn btn-secondary btn-sm" title="Chèn node tại vị trí k (O(n))">📍 Chèn tại K</button>
+          <button id="btn-dll-search" class="btn btn-secondary btn-sm" title="Tìm kiếm tuần tự node có giá trị x (O(n))">🔍 Tìm(x)</button>
+        </div>
+        <div class="tree-traversal-group">
+          <button id="btn-dll-traverse-fwd" class="btn btn-secondary btn-sm" title="Duyệt xuôi từ Head ➔ Tail qua con trỏ next">➡️ Duyệt xuôi</button>
+          <button id="btn-dll-traverse-bwd" class="btn btn-secondary btn-sm" title="Duyệt ngược từ Tail ⬅ Head qua con trỏ prev">⬅️ Duyệt ngược</button>
+          <button id="btn-dll-reverse" class="btn btn-secondary btn-sm" title="Đảo ngược DSLK Đôi bằng cách swap(prev, next)">🔄 Đảo ngược</button>
+        </div>
+        <div class="tree-minmax-group">
+          <button id="btn-dll-del-head" class="btn btn-secondary btn-sm" title="Xóa node ở đầu danh sách (O(1))">🗑️ Xóa đầu</button>
+          <button id="btn-dll-del-tail" class="btn btn-secondary btn-sm" title="Xóa node ở cuối danh sách (O(1))">🗑️ Xóa đuôi</button>
+          <button id="btn-dll-del-val" class="btn btn-secondary btn-sm" title="Xóa node mang giá trị x">🗑️ Xóa X</button>
+        </div>
+        <button id="btn-dll-sample" class="btn btn-outline btn-sm" title="Tạo ngẫu nhiên danh sách đôi mới">🎲 Ngẫu nhiên</button>
+        <button id="btn-dll-clear" class="btn btn-secondary btn-sm" title="Xóa rỗng toàn bộ danh sách">🧹 Xóa rỗng</button>
+        <button id="btn-linear-reset" class="btn btn-secondary btn-sm" style="margin-left: auto;" title="Chạy lại kịch bản mô phỏng mặc định">🔄 Kịch bản gốc</button>
+      `;
+
+      document.getElementById('btn-dll-insert-head')?.addEventListener('click', () => this.handleDLLInsertHead());
+      document.getElementById('btn-dll-insert-tail')?.addEventListener('click', () => this.handleDLLInsertTail());
+      document.getElementById('btn-dll-insert-at')?.addEventListener('click', () => this.handleDLLInsertAt());
+      document.getElementById('btn-dll-search')?.addEventListener('click', () => this.handleDLLSearch());
+      document.getElementById('btn-dll-traverse-fwd')?.addEventListener('click', () => this.handleDLLTraverseForward());
+      document.getElementById('btn-dll-traverse-bwd')?.addEventListener('click', () => this.handleDLLTraverseBackward());
+      document.getElementById('btn-dll-reverse')?.addEventListener('click', () => this.handleDLLReverse());
+      document.getElementById('btn-dll-del-head')?.addEventListener('click', () => this.handleDLLDeleteHead());
+      document.getElementById('btn-dll-del-tail')?.addEventListener('click', () => this.handleDLLDeleteTail());
+      document.getElementById('btn-dll-del-val')?.addEventListener('click', () => this.handleDLLDeleteVal());
+      document.getElementById('btn-dll-sample')?.addEventListener('click', () => this.handleDLLSample());
+      document.getElementById('btn-dll-clear')?.addEventListener('click', () => this.handleDLLClear());
+      document.getElementById('btn-linear-reset')?.addEventListener('click', () => {
+        state.computeSteps();
+        state.notify('stepChange');
+        player.play();
+      });
+    } else if (type === 'circularLinkedList') {
+      this.linearToolbarContainer.innerHTML = `
+        <span class="linear-toolbar-label">Thao tác DSLK Vòng:</span>
+        <div class="linear-input-group">
+          <input id="cll-input-val" type="number" class="linear-input-num" value="${Math.floor(Math.random() * 80) + 10}" min="1" max="99" placeholder="Giá trị x">
+          <button id="btn-cll-insert-head" class="btn btn-primary btn-sm" title="Thêm node vào đầu, Tail.next trỏ vòng về Head mới">➕ Thêm đầu</button>
+          <button id="btn-cll-insert-tail" class="btn btn-primary btn-sm" title="Thêm node vào cuối, Node mới trỏ vòng về Head">➕ Thêm đuôi</button>
+          <button id="btn-cll-round-robin" class="btn btn-secondary btn-sm" title="Cấp phát 1 lượt CPU Quantum cho tiến trình tiếp theo theo vòng tròn khép kín">⚡ Round-Robin(1 lượt)</button>
+          <button id="btn-cll-search" class="btn btn-secondary btn-sm" title="Tìm kiếm x trên vòng tròn">🔍 Tìm(x)</button>
+        </div>
+        <div class="tree-minmax-group">
+          <button id="btn-cll-del-head" class="btn btn-secondary btn-sm" title="Xóa node ở đầu và cập nhật Tail.next trỏ về Head mới">🗑️ Xóa đầu</button>
+          <button id="btn-cll-del-tail" class="btn btn-secondary btn-sm" title="Xóa node ở cuối">🗑️ Xóa đuôi</button>
+        </div>
+        <button id="btn-cll-sample" class="btn btn-outline btn-sm" title="Tạo ngẫu nhiên danh sách vòng mới">🎲 Ngẫu nhiên</button>
+        <button id="btn-cll-clear" class="btn btn-secondary btn-sm" title="Xóa rỗng danh sách vòng">🧹 Xóa rỗng</button>
+        <button id="btn-linear-reset" class="btn btn-secondary btn-sm" style="margin-left: auto;" title="Chạy lại kịch bản mô phỏng mặc định">🔄 Kịch bản gốc</button>
+      `;
+
+      document.getElementById('btn-cll-insert-head')?.addEventListener('click', () => this.handleCLLInsertHead());
+      document.getElementById('btn-cll-insert-tail')?.addEventListener('click', () => this.handleCLLInsertTail());
+      document.getElementById('btn-cll-round-robin')?.addEventListener('click', () => this.handleCLLRoundRobin());
+      document.getElementById('btn-cll-search')?.addEventListener('click', () => this.handleCLLSearch());
+      document.getElementById('btn-cll-del-head')?.addEventListener('click', () => this.handleCLLDeleteHead());
+      document.getElementById('btn-cll-del-tail')?.addEventListener('click', () => this.handleCLLDeleteTail());
+      document.getElementById('btn-cll-sample')?.addEventListener('click', () => this.handleCLLSample());
+      document.getElementById('btn-cll-clear')?.addEventListener('click', () => this.handleCLLClear());
+      document.getElementById('btn-linear-reset')?.addEventListener('click', () => {
+        state.computeSteps();
+        state.notify('stepChange');
+        player.play();
+      });
+    } else if (type === 'deque') {
+      this.linearToolbarContainer.innerHTML = `
+        <span class="linear-toolbar-label">Thao tác Deque (2 đầu):</span>
+        <div class="linear-input-group">
+          <input id="deque-input-val" type="number" class="linear-input-num" value="${Math.floor(Math.random() * 80) + 10}" min="1" max="99" placeholder="Số x">
+          <button id="btn-deque-push-front" class="btn btn-primary btn-sm" title="Đẩy phần tử vào đầu trước (Front)">📥 Push Front</button>
+          <button id="btn-deque-push-back" class="btn btn-primary btn-sm" title="Đẩy phần tử vào đuôi sau (Rear)">📥 Push Back</button>
+        </div>
+        <div class="tree-traversal-group">
+          <button id="btn-deque-pop-front" class="btn btn-secondary btn-sm" title="Rút phần tử ở đầu trước (Front)">📤 Pop Front</button>
+          <button id="btn-deque-pop-back" class="btn btn-secondary btn-sm" title="Rút phần tử ở đuôi sau (Rear)">📤 Pop Back</button>
+        </div>
+        <div class="tree-minmax-group">
+          <button id="btn-deque-peek-front" class="btn btn-outline btn-sm" title="Xem giá trị đầu trước">👁️ Peek Front</button>
+          <button id="btn-deque-peek-back" class="btn btn-outline btn-sm" title="Xem giá trị đuôi sau">👁️ Peek Rear</button>
+        </div>
+        <button id="btn-deque-palindrome" class="btn btn-outline btn-sm" title="Nạp chuỗi mẫu và mô phỏng kiểm tra đối xứng Palindrome">✨ Palindrome</button>
+        <button id="btn-deque-clear" class="btn btn-secondary btn-sm" title="Xóa rỗng Deque">🧹 Xóa rỗng</button>
+        <button id="btn-linear-reset" class="btn btn-secondary btn-sm" style="margin-left: auto;" title="Chạy lại kịch bản mặc định">🔄 Kịch bản gốc</button>
+      `;
+
+      document.getElementById('btn-deque-push-front')?.addEventListener('click', () => this.handleDequePushFront());
+      document.getElementById('btn-deque-push-back')?.addEventListener('click', () => this.handleDequePushBack());
+      document.getElementById('btn-deque-pop-front')?.addEventListener('click', () => this.handleDequePopFront());
+      document.getElementById('btn-deque-pop-back')?.addEventListener('click', () => this.handleDequePopBack());
+      document.getElementById('btn-deque-peek-front')?.addEventListener('click', () => this.handleDequePeekFront());
+      document.getElementById('btn-deque-peek-back')?.addEventListener('click', () => this.handleDequePeekBack());
+      document.getElementById('btn-deque-palindrome')?.addEventListener('click', () => this.handleDequePalindromeDemo());
+      document.getElementById('btn-deque-clear')?.addEventListener('click', () => this.handleDequeClear());
+      document.getElementById('btn-linear-reset')?.addEventListener('click', () => {
+        state.computeSteps();
+        state.notify('stepChange');
+        player.play();
+      });
     } else if (algo.isTree) {
       if (algo.id === 'bst') {
         this.linearToolbarContainer.innerHTML = `
@@ -1643,6 +1754,1141 @@ export class UIController {
     state.currentStepIndex = state.steps.length - 1;
     state.notify('stepChange');
     this.showFeedback('🧹 Đã xóa rỗng danh sách liên kết thành công!');
+  }
+
+  // =========================================================================
+  // THAO TÁC TƯƠNG TÁC DANH SÁCH LIÊN KẾT ĐÔI (DOUBLY LINKED LIST)
+  // =========================================================================
+
+  _cloneDLLNodes(nodes) {
+    return (nodes || []).map(n => ({ ...n }));
+  }
+
+  handleDLLInsertHead() {
+    player.pause();
+    const input = document.getElementById('dll-input-val');
+    const val = input ? parseInt(input.value, 10) || 50 : 50;
+
+    const currStep = state.getCurrentStep() || {};
+    const nodes = this._cloneDLLNodes(currStep.nodes);
+
+    if (nodes.length >= 7) {
+      this.showFeedback('⚠️ Danh sách đã đạt giới hạn hiển thị (7 Node)!', true);
+      return;
+    }
+
+    const newId = `dll-node-${Date.now()}`;
+    const newHead = { id: newId, value: val, prevId: null, nextId: nodes[0]?.id || null };
+    if (nodes.length > 0) {
+      nodes[0].prevId = newId;
+    }
+    nodes.unshift(newHead);
+
+    const newStep = {
+      linearType: 'doublyLinkedList',
+      nodes: nodes,
+      activeNodeId: newId,
+      pointers: { head: newId, tail: nodes[nodes.length - 1]?.id },
+      activeAction: 'insert_head',
+      activeItem: val,
+      message: `[Người dùng] insertHead(${val}): Tạo Node(${val}), gán next ➔ Head cũ, gán prev của Head cũ ⬅ Node mới. Cập nhật Head mới. Chi phí O(1).`,
+      codeLine: 3,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã thêm Node(${val}) vào đầu DSLK Đôi (Head)!`);
+    soundFX.playSwap();
+    this.checkPracticeProgress('insert_head');
+    if (input) input.value = Math.floor(Math.random() * 80) + 10;
+  }
+
+  handleDLLInsertTail() {
+    player.pause();
+    const input = document.getElementById('dll-input-val');
+    const val = input ? parseInt(input.value, 10) || 50 : 50;
+
+    const currStep = state.getCurrentStep() || {};
+    const nodes = this._cloneDLLNodes(currStep.nodes);
+
+    if (nodes.length >= 7) {
+      this.showFeedback('⚠️ Danh sách đã đạt giới hạn hiển thị (7 Node)!', true);
+      return;
+    }
+
+    const newId = `dll-node-${Date.now()}`;
+    const lastNode = nodes[nodes.length - 1];
+    const newTail = { id: newId, value: val, prevId: lastNode ? lastNode.id : null, nextId: null };
+    if (lastNode) {
+      lastNode.nextId = newId;
+    }
+    nodes.push(newTail);
+
+    const newStep = {
+      linearType: 'doublyLinkedList',
+      nodes: nodes,
+      activeNodeId: newId,
+      pointers: { head: nodes[0]?.id, tail: newId },
+      activeAction: 'insert_tail',
+      activeItem: val,
+      message: `[Người dùng] insertTail(${val}): Nhờ con trỏ Tail trực tiếp, gán Tail.next ➔ Node mới, Node.prev ⬅ Tail cũ. Cập nhật Tail mới trong O(1)!`,
+      codeLine: 7,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã thêm Node(${val}) vào đuôi DSLK Đôi (Tail) O(1)!`);
+    soundFX.playSwap();
+    this.checkPracticeProgress('insert_tail');
+    if (input) input.value = Math.floor(Math.random() * 80) + 10;
+  }
+
+  handleDLLInsertAt() {
+    player.pause();
+    const inputVal = document.getElementById('dll-input-val');
+    const inputIdx = document.getElementById('dll-input-idx');
+    const val = inputVal ? parseInt(inputVal.value, 10) || 50 : 50;
+    const k = inputIdx ? Math.max(0, parseInt(inputIdx.value, 10) || 0) : 0;
+
+    const currStep = state.getCurrentStep() || {};
+    const nodes = this._cloneDLLNodes(currStep.nodes);
+
+    if (nodes.length >= 7) {
+      this.showFeedback('⚠️ Danh sách đã đạt giới hạn hiển thị (7 Node)!', true);
+      return;
+    }
+
+    if (nodes.length === 0 || k === 0) {
+      this.handleDLLInsertHead();
+      return;
+    }
+
+    if (k >= nodes.length) {
+      this.handleDLLInsertTail();
+      return;
+    }
+
+    // Chèn tại vị trí k ở giữa
+    const insertSteps = [];
+    // Mô phỏng duyệt đến k
+    for (let i = 0; i <= k; i++) {
+      insertSteps.push({
+        linearType: 'doublyLinkedList',
+        nodes: this._cloneDLLNodes(nodes),
+        activeNodeId: nodes[i].id,
+        pointers: {
+          head: nodes[0].id,
+          tail: nodes[nodes.length - 1].id,
+          curr: nodes[i].id
+        },
+        activeAction: 'traverse_forward',
+        activeItem: val,
+        message: `[Chèn tại vị trí ${k}] Duyệt đến vị trí ${i}: curr = Node(${nodes[i].value})...`,
+        codeLine: 2,
+        isLinear: true
+      });
+    }
+
+    // Thực hiện chèn node vào giữa
+    const newId = `dll-node-${Date.now()}`;
+    const prevNode = nodes[k - 1];
+    const nextNode = nodes[k];
+    const newNode = { id: newId, value: val, prevId: prevNode.id, nextId: nextNode.id };
+
+    prevNode.nextId = newId;
+    nextNode.prevId = newId;
+    nodes.splice(k, 0, newNode);
+
+    insertSteps.push({
+      linearType: 'doublyLinkedList',
+      nodes: this._cloneDLLNodes(nodes),
+      activeNodeId: newId,
+      pointers: {
+        head: nodes[0].id,
+        tail: nodes[nodes.length - 1].id,
+        curr: newId
+      },
+      activeAction: 'insert_at',
+      activeItem: val,
+      message: `★ [Chèn tại vị trí ${k}] Thành công! Nối 4 liên kết: Node(${prevNode.value}).next = Node(${val}), Node(${val}).prev = Node(${prevNode.value}), Node(${val}).next = Node(${nextNode.value}), Node(${nextNode.value}).prev = Node(${val}).`,
+      codeLine: 5,
+      isLinear: true
+    });
+
+    this.executeInteractiveSteps(insertSteps, `✓ Đã chèn Node(${val}) vào vị trí [${k}] thành công!`);
+    soundFX.playSwap();
+    if (inputVal) inputVal.value = Math.floor(Math.random() * 80) + 10;
+  }
+
+  handleDLLSearch() {
+    player.pause();
+    const input = document.getElementById('dll-input-val');
+    const val = input ? parseInt(input.value, 10) || 50 : 50;
+
+    const currStep = state.getCurrentStep() || {};
+    const nodes = this._cloneDLLNodes(currStep.nodes);
+
+    if (nodes.length === 0) {
+      this.showFeedback('⚠️ Danh sách liên kết đôi đang rỗng, không thể tìm kiếm.', true);
+      return;
+    }
+
+    const searchSteps = [];
+    let foundIndex = -1;
+
+    for (let i = 0; i < nodes.length; i++) {
+      const isMatch = nodes[i].value === val;
+      searchSteps.push({
+        linearType: 'doublyLinkedList',
+        nodes: this._cloneDLLNodes(nodes),
+        activeNodeId: nodes[i].id,
+        pointers: {
+          head: nodes[0].id,
+          tail: nodes[nodes.length - 1].id,
+          curr: nodes[i].id
+        },
+        activeAction: isMatch ? 'search_found' : 'search',
+        activeItem: val,
+        message: isMatch
+          ? `★ [Người dùng] ĐÃ TÌM THẤY Node(${nodes[i].value}) tại vị trí [${i}]! Chi phí tìm kiếm O(${i + 1}).`
+          : `[Tìm kiếm ${val}] Duyệt con trỏ curr = curr.next ➔ Node(${nodes[i].value}) tại [${i}]. So sánh: ${nodes[i].value} !== ${val}...`,
+        codeLine: 10,
+        isLinear: true
+      });
+
+      if (isMatch) {
+        foundIndex = i;
+        break;
+      }
+    }
+
+    if (foundIndex === -1) {
+      searchSteps.push({
+        linearType: 'doublyLinkedList',
+        nodes: this._cloneDLLNodes(nodes),
+        activeNodeId: null,
+        pointers: {
+          head: nodes[0].id,
+          tail: nodes[nodes.length - 1].id,
+          curr: null
+        },
+        activeAction: 'search_miss',
+        activeItem: val,
+        message: `✕ [Người dùng] curr đã duyệt tới NULL: Không tìm thấy giá trị ${val} trong danh sách liên kết đôi!`,
+        codeLine: 10,
+        isLinear: true
+      });
+    }
+
+    this.executeInteractiveSteps(searchSteps, foundIndex !== -1 ? `✓ Đã tìm thấy Node(${val}) tại vị trí [${foundIndex}]!` : `Không tìm thấy giá trị ${val} trong DSLK Đôi.`);
+    if (foundIndex !== -1) soundFX.playFound();
+    else soundFX.playCompare();
+  }
+
+  handleDLLTraverseForward() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const nodes = this._cloneDLLNodes(currStep.nodes);
+
+    if (nodes.length === 0) {
+      this.showFeedback('⚠️ Danh sách rỗng, không có phần tử để duyệt.', true);
+      return;
+    }
+
+    const travSteps = [];
+    for (let i = 0; i < nodes.length; i++) {
+      travSteps.push({
+        linearType: 'doublyLinkedList',
+        nodes: this._cloneDLLNodes(nodes),
+        activeNodeId: nodes[i].id,
+        pointers: {
+          head: nodes[0].id,
+          tail: nodes[nodes.length - 1].id,
+          curr: nodes[i].id
+        },
+        activeAction: 'traverse_forward',
+        message: `➡️ [Duyệt xuôi] Bước ${i + 1}/${nodes.length}: curr = Node(${nodes[i].value}) tại [${i}]. Tiếp tục qua curr.next ➔`,
+        codeLine: 10,
+        isLinear: true
+      });
+    }
+
+    this.executeInteractiveSteps(travSteps, '✓ Đã hoàn thành duyệt xuôi từ Head ➔ Tail!');
+    soundFX.playVictory();
+    this.checkPracticeProgress('traverse_forward');
+  }
+
+  handleDLLTraverseBackward() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const nodes = this._cloneDLLNodes(currStep.nodes);
+
+    if (nodes.length === 0) {
+      this.showFeedback('⚠️ Danh sách rỗng, không có phần tử để duyệt.', true);
+      return;
+    }
+
+    const travSteps = [];
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      travSteps.push({
+        linearType: 'doublyLinkedList',
+        nodes: this._cloneDLLNodes(nodes),
+        activeNodeId: nodes[i].id,
+        pointers: {
+          head: nodes[0].id,
+          tail: nodes[nodes.length - 1].id,
+          curr: nodes[i].id
+        },
+        activeAction: 'traverse_backward',
+        message: `⬅️ [Duyệt ngược] Bước ${nodes.length - i}/${nodes.length}: curr = Node(${nodes[i].value}) tại [${i}]. Lùi về qua con trỏ curr.prev ⬅`,
+        codeLine: 12,
+        isLinear: true
+      });
+    }
+
+    this.executeInteractiveSteps(travSteps, '✓ Đã hoàn thành duyệt ngược từ Tail ⬅ Head thành công!');
+    soundFX.playVictory();
+    this.checkPracticeProgress('traverse_backward');
+  }
+
+  handleDLLReverse() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const nodes = this._cloneDLLNodes(currStep.nodes);
+
+    if (nodes.length <= 1) {
+      this.showFeedback('⚠️ Cần ít nhất 2 Node để thực hiện đảo ngược.', true);
+      return;
+    }
+
+    const revSteps = [];
+    revSteps.push({
+      linearType: 'doublyLinkedList',
+      nodes: this._cloneDLLNodes(nodes),
+      pointers: { head: nodes[0].id, tail: nodes[nodes.length - 1].id, curr: nodes[0].id },
+      activeAction: 'reverse_start',
+      message: 'Bắt đầu đảo ngược DSLK Đôi: Duyệt từng node và swap(node.prev, node.next).',
+      codeLine: 14,
+      isLinear: true
+    });
+
+    nodes.forEach((node, idx) => {
+      const temp = node.prevId;
+      node.prevId = node.nextId;
+      node.nextId = temp;
+
+      revSteps.push({
+        linearType: 'doublyLinkedList',
+        nodes: this._cloneDLLNodes(nodes),
+        activeNodeId: node.id,
+        pointers: { head: nodes[0].id, tail: nodes[nodes.length - 1].id, curr: node.id },
+        activeAction: 'reverse_swap',
+        message: `Hoán đổi cặp con trỏ tại Node(${node.value}): swap(prev, next). Con trỏ tiến trở thành con trỏ lùi.`,
+        codeLine: 15,
+        isLinear: true
+      });
+    });
+
+    nodes.reverse();
+
+    revSteps.push({
+      linearType: 'doublyLinkedList',
+      nodes: this._cloneDLLNodes(nodes),
+      activeNodeId: nodes[0].id,
+      pointers: { head: nodes[0].id, tail: nodes[nodes.length - 1].id },
+      activeAction: 'reverse_done',
+      message: `Đảo ngược DSLK Đôi thành công! Hoán đổi Head ⇄ Tail: Head mới là Node(${nodes[0].value}), Tail mới là Node(${nodes[nodes.length - 1].value}).`,
+      codeLine: 16,
+      isLinear: true
+    });
+
+    this.executeInteractiveSteps(revSteps, '✓ Đã đảo ngược toàn bộ DSLK Đôi thành công!');
+    soundFX.playVictory();
+    this.checkPracticeProgress('reverse');
+  }
+
+  handleDLLDeleteHead() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const nodes = this._cloneDLLNodes(currStep.nodes);
+
+    if (nodes.length === 0) {
+      this.showFeedback('⚠️ DSLK Đôi đang rỗng (Head = NULL), không thể xóa!', true);
+      return;
+    }
+
+    const removed = nodes.shift();
+    if (nodes.length > 0) {
+      nodes[0].prevId = null;
+    }
+
+    const newStep = {
+      linearType: 'doublyLinkedList',
+      nodes: nodes,
+      activeNodeId: nodes[0]?.id || null,
+      pointers: {
+        head: nodes[0]?.id || null,
+        tail: nodes[nodes.length - 1]?.id || null
+      },
+      activeAction: 'delete_head',
+      activeItem: removed.value,
+      message: nodes.length > 0
+        ? `[Người dùng] Xóa Node đầu (${removed.value}): Gán Head = Head.next (Node ${nodes[0].value}), gán Head.prev = NULL. Chi phí O(1).`
+        : `[Người dùng] Xóa Node đầu (${removed.value}): Danh sách chỉ còn 1 node, giải phóng đưa về Head = Tail = NULL.`,
+      codeLine: 4,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã xóa phần tử đầu Node(${removed.value}) thành công!`);
+    soundFX.playSwap();
+  }
+
+  handleDLLDeleteTail() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const nodes = this._cloneDLLNodes(currStep.nodes);
+
+    if (nodes.length === 0) {
+      this.showFeedback('⚠️ DSLK Đôi đang rỗng (Tail = NULL), không thể xóa!', true);
+      return;
+    }
+
+    const removed = nodes.pop();
+    if (nodes.length > 0) {
+      nodes[nodes.length - 1].nextId = null;
+    }
+
+    const newStep = {
+      linearType: 'doublyLinkedList',
+      nodes: nodes,
+      activeNodeId: nodes[nodes.length - 1]?.id || null,
+      pointers: {
+        head: nodes[0]?.id || null,
+        tail: nodes[nodes.length - 1]?.id || null
+      },
+      activeAction: 'delete_tail',
+      activeItem: removed.value,
+      message: nodes.length > 0
+        ? `[Người dùng] Xóa Node đuôi (${removed.value}): Nhờ con trỏ prev, gán Tail = Tail.prev (Node ${nodes[nodes.length - 1].value}), Tail.next = NULL cực nhanh trong O(1)! (Vượt trội so với DSLK Đơn mất O(n)).`
+        : `[Người dùng] Xóa Node đuôi (${removed.value}): Danh sách trở về rỗng (Head = Tail = NULL).`,
+      codeLine: 8,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã xóa phần tử đuôi Node(${removed.value}) trong O(1)!`);
+    soundFX.playSwap();
+  }
+
+  handleDLLDeleteVal() {
+    player.pause();
+    const input = document.getElementById('dll-input-val');
+    const val = input ? parseInt(input.value, 10) || 50 : 50;
+
+    const currStep = state.getCurrentStep() || {};
+    const nodes = this._cloneDLLNodes(currStep.nodes);
+
+    if (nodes.length === 0) {
+      this.showFeedback('⚠️ Danh sách rỗng, không có phần tử để xóa.', true);
+      return;
+    }
+
+    const targetIdx = nodes.findIndex(n => n.value === val);
+    if (targetIdx === -1) {
+      this.showFeedback(`⚠️ Không tìm thấy Node mang giá trị ${val} để xóa.`, true);
+      return;
+    }
+
+    if (targetIdx === 0) {
+      this.handleDLLDeleteHead();
+      return;
+    }
+    if (targetIdx === nodes.length - 1) {
+      this.handleDLLDeleteTail();
+      return;
+    }
+
+    // Xóa ở giữa: bắc cầu qua prev và next
+    const prevNode = nodes[targetIdx - 1];
+    const nextNode = nodes[targetIdx + 1];
+    prevNode.nextId = nextNode.id;
+    nextNode.prevId = prevNode.id;
+    const removed = nodes.splice(targetIdx, 1)[0];
+
+    const newStep = {
+      linearType: 'doublyLinkedList',
+      nodes: nodes,
+      activeNodeId: prevNode.id,
+      pointers: {
+        head: nodes[0].id,
+        tail: nodes[nodes.length - 1].id
+      },
+      activeAction: 'delete_val',
+      activeItem: val,
+      message: `[Người dùng] Xóa Node(${val}): Bắc cầu trực tiếp node.prev.next = node.next và node.next.prev = node.prev. Giải phóng Node(${val}).`,
+      codeLine: 6,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã xóa Node(${val}) khỏi DSLK Đôi thành công!`);
+    soundFX.playSwap();
+  }
+
+  handleDLLSample() {
+    player.pause();
+    const count = Math.floor(Math.random() * 2) + 3; // 3 hoặc 4 nodes
+    const sampleVals = [];
+    while (sampleVals.length < count) {
+      const r = Math.floor(Math.random() * 85) + 12;
+      if (!sampleVals.includes(r)) sampleVals.push(r);
+    }
+
+    const nodes = [];
+    sampleVals.forEach((val, idx) => {
+      const node = {
+        id: `dll-node-sample-${idx}`,
+        value: val,
+        prevId: idx > 0 ? `dll-node-sample-${idx - 1}` : null,
+        nextId: idx < count - 1 ? `dll-node-sample-${idx + 1}` : null
+      };
+      nodes.push(node);
+    });
+
+    const newStep = {
+      linearType: 'doublyLinkedList',
+      nodes: nodes,
+      activeNodeId: nodes[0].id,
+      pointers: { head: nodes[0].id, tail: nodes[nodes.length - 1].id },
+      activeAction: 'init',
+      message: `[Người dùng] Tạo ngẫu nhiên DSLK Đôi mới gồm ${count} Node: ${sampleVals.join(' ⇄ ')}.`,
+      codeLine: 1,
+      isLinear: true
+    };
+
+    state.steps = [newStep];
+    state.currentStepIndex = 0;
+    state.notify('stepChange');
+    this.showFeedback(`🎲 Đã tạo ngẫu nhiên DSLK Đôi mới gồm ${count} node!`);
+    soundFX.playShuffle();
+  }
+
+  handleDLLClear() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const nodes = currStep.nodes || [];
+
+    if (nodes.length === 0) {
+      this.showFeedback('ℹ️ Danh sách liên kết đôi đã rỗng sẵn.', false);
+      return;
+    }
+
+    const newStep = {
+      linearType: 'doublyLinkedList',
+      nodes: [],
+      activeNodeId: null,
+      pointers: { head: null, tail: null },
+      activeAction: 'clear',
+      message: `[Người dùng] Đã giải phóng bộ nhớ và xóa rỗng toàn bộ DSLK Đôi (Head = Tail = NULL).`,
+      codeLine: 1,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback('🧹 Đã xóa rỗng Danh sách liên kết đôi thành công!');
+    soundFX.playPop();
+  }
+
+  // =========================================================================
+  // THAO TÁC TƯƠNG TÁC DANH SÁCH LIÊN KẾT VÒNG (CIRCULAR LINKED LIST)
+  // =========================================================================
+
+  handleCLLInsertHead() {
+    player.pause();
+    const input = document.getElementById('cll-input-val');
+    const val = input ? parseInt(input.value, 10) || 50 : 50;
+
+    const currStep = state.getCurrentStep() || {};
+    const nodes = (currStep.nodes || []).map(n => ({ ...n }));
+
+    if (nodes.length >= 7) {
+      this.showFeedback('⚠️ Danh sách vòng đã đạt giới hạn hiển thị (7 Node)!', true);
+      return;
+    }
+
+    const newId = `cll-node-${Date.now()}`;
+    const newHead = { id: newId, value: val, nextId: nodes[0]?.id || newId };
+    if (nodes.length > 0) {
+      nodes[nodes.length - 1].nextId = newId;
+    }
+    nodes.unshift(newHead);
+
+    const newStep = {
+      linearType: 'circularLinkedList',
+      nodes: nodes,
+      activeNodeId: newId,
+      pointers: { head: newId, tail: nodes[nodes.length - 1]?.id },
+      activeAction: 'insert_head',
+      activeItem: val,
+      message: `[Người dùng] insertHead(${val}): Tạo Node(${val}), nối next ➔ Head cũ, Tail.next uốn vòng trỏ về Head mới! Head = Node(${val}).`,
+      codeLine: 4,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã thêm Node(${val}) vào đầu DSLK Vòng!`);
+    soundFX.playSwap();
+    if (input) input.value = Math.floor(Math.random() * 80) + 10;
+  }
+
+  handleCLLInsertTail() {
+    player.pause();
+    const input = document.getElementById('cll-input-val');
+    const val = input ? parseInt(input.value, 10) || 50 : 50;
+
+    const currStep = state.getCurrentStep() || {};
+    const nodes = (currStep.nodes || []).map(n => ({ ...n }));
+
+    if (nodes.length >= 7) {
+      this.showFeedback('⚠️ Danh sách vòng đã đạt giới hạn hiển thị (7 Node)!', true);
+      return;
+    }
+
+    const newId = `cll-node-${Date.now()}`;
+    const newTail = { id: newId, value: val, nextId: nodes[0]?.id || newId };
+    if (nodes.length > 0) {
+      nodes[nodes.length - 1].nextId = newId;
+    }
+    nodes.push(newTail);
+
+    const newStep = {
+      linearType: 'circularLinkedList',
+      nodes: nodes,
+      activeNodeId: newId,
+      pointers: { head: nodes[0]?.id, tail: newId },
+      activeAction: 'insert_tail',
+      activeItem: val,
+      message: `[Người dùng] insertTail(${val}): Tạo Node(${val}), nối Tail cũ ➔ Node mới, Node mới uốn vòng trỏ về Head. Cập nhật Tail mới.`,
+      codeLine: 7,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã thêm Node(${val}) vào đuôi DSLK Vòng!`);
+    soundFX.playSwap();
+    if (input) input.value = Math.floor(Math.random() * 80) + 10;
+  }
+
+  handleCLLRoundRobin() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const nodes = (currStep.nodes || []).map(n => ({ ...n }));
+
+    if (nodes.length === 0) {
+      this.showFeedback('⚠️ Danh sách vòng đang rỗng.', true);
+      return;
+    }
+
+    const currId = currStep.pointers?.curr;
+    let nextIdx = 0;
+    if (currId) {
+      const currIdx = nodes.findIndex(n => n.id === currId);
+      nextIdx = (currIdx + 1) % nodes.length;
+    }
+
+    const isLoopBack = nextIdx === 0 && nodes.length > 1;
+    const targetNode = nodes[nextIdx];
+
+    const newStep = {
+      linearType: 'circularLinkedList',
+      nodes: nodes,
+      activeNodeId: targetNode.id,
+      pointers: {
+        head: nodes[0].id,
+        tail: nodes[nodes.length - 1].id,
+        curr: targetNode.id
+      },
+      activeAction: isLoopBack ? 'loop_back' : 'round_robin',
+      message: isLoopBack
+        ? `🔄 [Round-Robin Vòng mới] Đã hoàn thành 1 vòng tròn! Tail trỏ ngược về Head (Node ${targetNode.value}). CPU tiếp tục luân chuyển không ngừng!`
+        : `⚡ [Round-Robin CPU Quantum] Cấp phát 1 lượt xử lý cho Tiến trình Node(${targetNode.value}) tại vị trí [${nextIdx}].`,
+      codeLine: 10,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`⚡ CPU cấp phát lượt cho Node(${targetNode.value})!`);
+    soundFX.playCompare();
+  }
+
+  handleCLLSearch() {
+    player.pause();
+    const input = document.getElementById('cll-input-val');
+    const val = input ? parseInt(input.value, 10) || 50 : 50;
+
+    const currStep = state.getCurrentStep() || {};
+    const nodes = (currStep.nodes || []).map(n => ({ ...n }));
+
+    if (nodes.length === 0) {
+      this.showFeedback('⚠️ Danh sách rỗng, không thể tìm kiếm.', true);
+      return;
+    }
+
+    const searchSteps = [];
+    let found = false;
+
+    for (let i = 0; i < nodes.length; i++) {
+      const isMatch = nodes[i].value === val;
+      searchSteps.push({
+        linearType: 'circularLinkedList',
+        nodes: nodes.map(n => ({ ...n })),
+        activeNodeId: nodes[i].id,
+        pointers: {
+          head: nodes[0].id,
+          tail: nodes[nodes.length - 1].id,
+          curr: nodes[i].id
+        },
+        activeAction: isMatch ? 'search_found' : 'search',
+        activeItem: val,
+        message: isMatch
+          ? `★ [DSLK Vòng] ĐÃ TÌM THẤY Node(${nodes[i].value}) tại vị trí [${i}]!`
+          : `[Tìm ${val}] Duyệt qua Node(${nodes[i].value}) [${i}]...`,
+        codeLine: 10,
+        isLinear: true
+      });
+      if (isMatch) {
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      searchSteps.push({
+        linearType: 'circularLinkedList',
+        nodes: nodes.map(n => ({ ...n })),
+        activeNodeId: null,
+        pointers: { head: nodes[0].id, tail: nodes[nodes.length - 1].id, curr: null },
+        activeAction: 'search_miss',
+        message: `✕ Đã duyệt hết 1 vòng khép kín: Không tìm thấy giá trị ${val} trong DSLK Vòng!`,
+        codeLine: 10,
+        isLinear: true
+      });
+    }
+
+    this.executeInteractiveSteps(searchSteps, found ? `✓ Đã tìm thấy Node(${val})!` : `Không tìm thấy ${val} trong vòng tròn.`);
+    if (found) soundFX.playFound();
+    else soundFX.playCompare();
+  }
+
+  handleCLLDeleteHead() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const nodes = (currStep.nodes || []).map(n => ({ ...n }));
+
+    if (nodes.length === 0) {
+      this.showFeedback('⚠️ DSLK Vòng đang rỗng, không thể xóa!', true);
+      return;
+    }
+
+    const removed = nodes.shift();
+    if (nodes.length > 0) {
+      nodes[nodes.length - 1].nextId = nodes[0].id;
+    }
+
+    const newStep = {
+      linearType: 'circularLinkedList',
+      nodes: nodes,
+      activeNodeId: nodes[0]?.id || null,
+      pointers: {
+        head: nodes[0]?.id || null,
+        tail: nodes[nodes.length - 1]?.id || null
+      },
+      activeAction: 'delete_head',
+      activeItem: removed.value,
+      message: nodes.length > 0
+        ? `[Người dùng] Xóa Node đầu (${removed.value}): Gán Head = Head.next, cập nhật Tail.next uốn vòng trỏ về Head mới (Node ${nodes[0].value}).`
+        : `[Người dùng] Xóa Node đầu (${removed.value}): Danh sách trở về rỗng (Head = Tail = NULL).`,
+      codeLine: 4,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã xóa Node đầu (${removed.value}) thành công!`);
+    soundFX.playSwap();
+  }
+
+  handleCLLDeleteTail() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const nodes = (currStep.nodes || []).map(n => ({ ...n }));
+
+    if (nodes.length === 0) {
+      this.showFeedback('⚠️ DSLK Vòng đang rỗng, không thể xóa!', true);
+      return;
+    }
+
+    const removed = nodes.pop();
+    if (nodes.length > 0) {
+      nodes[nodes.length - 1].nextId = nodes[0].id;
+    }
+
+    const newStep = {
+      linearType: 'circularLinkedList',
+      nodes: nodes,
+      activeNodeId: nodes[nodes.length - 1]?.id || null,
+      pointers: {
+        head: nodes[0]?.id || null,
+        tail: nodes[nodes.length - 1]?.id || null
+      },
+      activeAction: 'delete_tail',
+      activeItem: removed.value,
+      message: nodes.length > 0
+        ? `[Người dùng] Xóa Node đuôi (${removed.value}): Duyệt đến node áp chót, cập nhật thành Tail mới và gán Tail.next trỏ về Head.`
+        : `[Người dùng] Xóa Node đuôi (${removed.value}): Danh sách trở về rỗng (Head = Tail = NULL).`,
+      codeLine: 7,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã xóa Node đuôi (${removed.value}) thành công!`);
+    soundFX.playSwap();
+  }
+
+  handleCLLSample() {
+    player.pause();
+    const count = Math.floor(Math.random() * 2) + 3;
+    const sampleVals = [];
+    while (sampleVals.length < count) {
+      const r = Math.floor(Math.random() * 85) + 12;
+      if (!sampleVals.includes(r)) sampleVals.push(r);
+    }
+
+    const nodes = [];
+    sampleVals.forEach((val, idx) => {
+      nodes.push({
+        id: `cll-node-sample-${idx}`,
+        value: val,
+        nextId: idx < count - 1 ? `cll-node-sample-${idx + 1}` : `cll-node-sample-0`
+      });
+    });
+
+    const newStep = {
+      linearType: 'circularLinkedList',
+      nodes: nodes,
+      activeNodeId: nodes[0].id,
+      pointers: { head: nodes[0].id, tail: nodes[nodes.length - 1].id },
+      activeAction: 'init',
+      message: `[Người dùng] Tạo ngẫu nhiên DSLK Vòng gồm ${count} Node: ${sampleVals.join(' ➔ ')} (vòng về ${sampleVals[0]}).`,
+      codeLine: 1,
+      isLinear: true
+    };
+
+    state.steps = [newStep];
+    state.currentStepIndex = 0;
+    state.notify('stepChange');
+    this.showFeedback(`🎲 Đã tạo ngẫu nhiên DSLK Vòng mới gồm ${count} node!`);
+    soundFX.playShuffle();
+  }
+
+  handleCLLClear() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const nodes = currStep.nodes || [];
+
+    if (nodes.length === 0) {
+      this.showFeedback('ℹ️ Danh sách vòng đã rỗng sẵn.', false);
+      return;
+    }
+
+    const newStep = {
+      linearType: 'circularLinkedList',
+      nodes: [],
+      activeNodeId: null,
+      pointers: { head: null, tail: null },
+      activeAction: 'clear',
+      message: `[Người dùng] Đã giải phóng toàn bộ DSLK Vòng (Head = Tail = NULL).`,
+      codeLine: 1,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback('🧹 Đã xóa rỗng DSLK Vòng thành công!');
+    soundFX.playPop();
+  }
+
+  // =========================================================================
+  // THAO TÁC TƯƠNG TÁC HÀNG ĐỢI HAI ĐẦU (DEQUE)
+  // =========================================================================
+
+  handleDequePushFront() {
+    player.pause();
+    const input = document.getElementById('deque-input-val');
+    const val = input ? parseInt(input.value, 10) || 45 : 45;
+
+    const currStep = state.getCurrentStep() || {};
+    const deque = currStep.deque ? [...currStep.deque] : [];
+
+    if (deque.length >= 8) {
+      this.showFeedback('⚠️ Deque đã đầy (Tối đa 8 phần tử)!', true);
+      return;
+    }
+
+    const newDeque = [{ id: `deque-${Date.now()}`, value: val }, ...deque];
+    const newStep = {
+      linearType: 'deque',
+      deque: newDeque,
+      capacity: 8,
+      activeAction: 'push_front',
+      activeItem: val,
+      activeEnds: ['front'],
+      message: `[Người dùng] pushFront(${val}): Đẩy phần tử ${val} vào đầu trước (Front) trong O(1). Size = ${newDeque.length}.`,
+      codeLine: 2,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã thêm ${val} vào đầu trước (Front) của Deque!`);
+    soundFX.playSwap();
+    if (input) input.value = Math.floor(Math.random() * 80) + 10;
+  }
+
+  handleDequePushBack() {
+    player.pause();
+    const input = document.getElementById('deque-input-val');
+    const val = input ? parseInt(input.value, 10) || 75 : 75;
+
+    const currStep = state.getCurrentStep() || {};
+    const deque = currStep.deque ? [...currStep.deque] : [];
+
+    if (deque.length >= 8) {
+      this.showFeedback('⚠️ Deque đã đầy (Tối đa 8 phần tử)!', true);
+      return;
+    }
+
+    const newDeque = [...deque, { id: `deque-${Date.now()}`, value: val }];
+    const newStep = {
+      linearType: 'deque',
+      deque: newDeque,
+      capacity: 8,
+      activeAction: 'push_back',
+      activeItem: val,
+      activeEnds: ['rear'],
+      message: `[Người dùng] pushBack(${val}): Đẩy phần tử ${val} vào đuôi sau (Rear) trong O(1). Size = ${newDeque.length}.`,
+      codeLine: 3,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã thêm ${val} vào đuôi sau (Rear) của Deque!`);
+    soundFX.playSwap();
+    if (input) input.value = Math.floor(Math.random() * 80) + 10;
+  }
+
+  handleDequePopFront() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const deque = currStep.deque ? [...currStep.deque] : [];
+
+    if (deque.length === 0) {
+      this.showFeedback('⚠️ Deque đang rỗng, không thể popFront!', true);
+      return;
+    }
+
+    const removed = deque.shift();
+    const newStep = {
+      linearType: 'deque',
+      deque: deque,
+      capacity: 8,
+      activeAction: 'pop_front',
+      activeItem: removed.value,
+      activeEnds: ['front'],
+      message: `[Người dùng] popFront(): Rút phần tử đầu trước ${removed.value} ra khỏi Deque trong O(1).`,
+      codeLine: 4,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã rút ${removed.value} từ Front của Deque!`);
+    soundFX.playPop();
+  }
+
+  handleDequePopBack() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const deque = currStep.deque ? [...currStep.deque] : [];
+
+    if (deque.length === 0) {
+      this.showFeedback('⚠️ Deque đang rỗng, không thể popBack!', true);
+      return;
+    }
+
+    const removed = deque.pop();
+    const newStep = {
+      linearType: 'deque',
+      deque: deque,
+      capacity: 8,
+      activeAction: 'pop_back',
+      activeItem: removed.value,
+      activeEnds: ['rear'],
+      message: `[Người dùng] popBack(): Rút phần tử đuôi sau ${removed.value} ra khỏi Deque trong O(1).`,
+      codeLine: 5,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã rút ${removed.value} từ Rear của Deque!`);
+    soundFX.playPop();
+  }
+
+  handleDequePeekFront() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const deque = currStep.deque || [];
+
+    if (deque.length === 0) {
+      this.showFeedback('ℹ️ Deque đang rỗng.', false);
+      return;
+    }
+
+    const val = deque[0].value;
+    this.showFeedback(`👁️ Giá trị đang ở đầu trước (Front) là: ${val}`);
+    soundFX.playCompare();
+  }
+
+  handleDequePeekRear() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const deque = currStep.deque || [];
+
+    if (deque.length === 0) {
+      this.showFeedback('ℹ️ Deque đang rỗng.', false);
+      return;
+    }
+
+    const val = deque[deque.length - 1].value;
+    this.showFeedback(`👁️ Giá trị đang ở đuôi sau (Rear) là: ${val}`);
+    soundFX.playCompare();
+  }
+
+  handleDequePalindromeDemo() {
+    player.pause();
+    // Khởi tạo Deque với chuỗi đối xứng mẫu: 18, 42, 99, 42, 18
+    const palVals = [18, 42, 99, 42, 18];
+    const steps = [];
+
+    const d = palVals.map((v, i) => ({ id: `pal-${i}`, value: v }));
+    steps.push({
+      linearType: 'deque',
+      deque: [...d],
+      capacity: 8,
+      activeAction: 'init',
+      message: 'Ứng dụng kinh điển của Deque: Kiểm tra dãy đối xứng Palindrome [18, 42, 99, 42, 18].',
+      codeLine: 6,
+      isLinear: true
+    });
+
+    let current = [...d];
+    while (current.length > 1) {
+      const f = current[0].value;
+      const r = current[current.length - 1].value;
+
+      steps.push({
+        linearType: 'deque',
+        deque: [...current],
+        capacity: 8,
+        activeAction: 'cmp_ends',
+        activeEnds: ['front', 'rear'],
+        message: `So sánh 2 đầu: Front (${f}) vs Rear (${r}). Hai giá trị KHỚP NHAU (${f} == ${r})!`,
+        codeLine: 6,
+        isLinear: true
+      });
+
+      current.shift();
+      current.pop();
+
+      steps.push({
+        linearType: 'deque',
+        deque: [...current],
+        capacity: 8,
+        activeAction: 'pop_both',
+        message: `Rút đồng thời popFront() và popBack(). Còn lại ${current.length} phần tử trong ống.`,
+        codeLine: 6,
+        isLinear: true
+      });
+    }
+
+    steps.push({
+      linearType: 'deque',
+      deque: [...current],
+      capacity: 8,
+      activeAction: 'palindrome_success',
+      message: '🎉 KẾT LUẬN: Dãy số trên là PALINDROME ĐỐI XỨNG HOÀN HẢO! Deque đã chứng minh trong O(n/2) = O(n).',
+      codeLine: 6,
+      isLinear: true
+    });
+
+    this.executeInteractiveSteps(steps, '🎉 Đã xác minh thành công: Dãy là Palindrome!');
+    soundFX.playVictory();
+  }
+
+  handleDequeClear() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const deque = currStep.deque || [];
+
+    if (deque.length === 0) {
+      this.showFeedback('ℹ️ Deque đã rỗng sẵn.', false);
+      return;
+    }
+
+    const newStep = {
+      linearType: 'deque',
+      deque: [],
+      capacity: 8,
+      activeAction: 'clear',
+      message: `[Người dùng] Đã xóa rỗng toàn bộ Deque (Size = 0).`,
+      codeLine: 1,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback('🧹 Đã xóa rỗng Deque thành công!');
+    soundFX.playPop();
   }
 
   // =========================================================================

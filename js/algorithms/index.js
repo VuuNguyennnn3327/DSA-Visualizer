@@ -15,6 +15,9 @@ import binary from './binary.js';
 import stack from './stack.js';
 import queue from './queue.js';
 import linkedList from './linkedList.js';
+import doublyLinkedList from './doublyLinkedList.js';
+import circularLinkedList from './circularLinkedList.js';
+import deque from './deque.js';
 import bst from './bst.js';
 import avlTree from './avlTree.js';
 import heap from './heap.js';
@@ -24,7 +27,10 @@ export const algorithms = [
   // Cấu trúc Dữ liệu Tuyến tính
   stack,
   queue,
+  deque,
   linkedList,
+  doublyLinkedList,
+  circularLinkedList,
 
   // Cấu trúc Cây & Cấu trúc Phân cấp (Mới)
   bst,
@@ -47,7 +53,10 @@ export const algorithms = [
 const algoCategoryMap = {
   stack: { group: 'Cấu trúc Tuyến tính', shortComplexity: 'O(1)' },
   queue: { group: 'Cấu trúc Tuyến tính', shortComplexity: 'O(1)' },
+  deque: { group: 'Cấu trúc Tuyến tính', shortComplexity: 'O(1)' },
   linkedList: { group: 'Cấu trúc Tuyến tính', shortComplexity: 'O(1)' },
+  doublyLinkedList: { group: 'Cấu trúc Tuyến tính', shortComplexity: 'O(1)' },
+  circularLinkedList: { group: 'Cấu trúc Tuyến tính', shortComplexity: 'O(1)' },
   bst: { group: 'Cấu trúc Cây (Tree)', shortComplexity: 'O(log n)' },
   avlTree: { group: 'Cấu trúc Cây (Tree)', shortComplexity: 'O(log n)' },
   heap: { group: 'Cấu trúc Cây (Tree)', shortComplexity: 'O(log n)' },

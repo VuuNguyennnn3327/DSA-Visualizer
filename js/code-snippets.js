@@ -933,6 +933,459 @@ class LinkedList {
   }
 }`
   },
+  doublyLinkedList: {
+    cpp: `// C++: Doubly Linked List (Danh sách liên kết đôi)
+#include <iostream>
+using namespace std;
+
+struct Node {
+    int data;
+    Node* prev;
+    Node* next;
+    Node(int val) : data(val), prev(nullptr), next(nullptr) {}
+};
+
+class DoublyLinkedList {
+public:
+    Node* head = nullptr;
+    Node* tail = nullptr;
+
+    void insertHead(int val) {
+        Node* newNode = new Node(val);
+        newNode->next = head;
+        if (head) head->prev = newNode;
+        head = newNode;
+        if (!tail) tail = newNode;
+    }
+
+    void insertTail(int val) {
+        Node* newNode = new Node(val);
+        newNode->prev = tail;
+        if (tail) tail->next = newNode;
+        tail = newNode;
+        if (!head) head = newNode;
+    }
+
+    void forwardTraversal() {
+        Node* curr = head;
+        while (curr) {
+            cout << curr->data << " -> ";
+            curr = curr->next;
+        }
+        cout << "NULL\\n";
+    }
+
+    void backwardTraversal() {
+        Node* curr = tail;
+        while (curr) {
+            cout << curr->data << " <- ";
+            curr = curr->prev;
+        }
+        cout << "NULL\\n";
+    }
+
+    void reverse() {
+        Node* curr = head;
+        Node* temp = nullptr;
+        while (curr) {
+            temp = curr->prev;
+            curr->prev = curr->next;
+            curr->next = temp;
+            curr = curr->prev;
+        }
+        if (temp) {
+            tail = head;
+            head = temp->prev;
+        }
+    }
+};`,
+    java: `// Java: Doubly Linked List
+class Node {
+    int data;
+    Node prev, next;
+    Node(int val) { this.data = val; }
+}
+
+public class DoublyLinkedList {
+    Node head = null;
+    Node tail = null;
+
+    public void insertHead(int val) {
+        Node newNode = new Node(val);
+        newNode.next = head;
+        if (head != null) head.prev = newNode;
+        head = newNode;
+        if (tail == null) tail = newNode;
+    }
+
+    public void insertTail(int val) {
+        Node newNode = new Node(val);
+        newNode.prev = tail;
+        if (tail != null) tail.next = newNode;
+        tail = newNode;
+        if (head == null) head = newNode;
+    }
+
+    public void forwardTraversal() {
+        Node curr = head;
+        while (curr != null) {
+            System.out.print(curr.data + " <-> ");
+            curr = curr.next;
+        }
+        System.out.println("NULL");
+    }
+
+    public void backwardTraversal() {
+        Node curr = tail;
+        while (curr != null) {
+            System.out.print(curr.data + " <-> ");
+            curr = curr.prev;
+        }
+        System.out.println("NULL");
+    }
+
+    public void reverse() {
+        Node curr = head;
+        Node temp = null;
+        while (curr != null) {
+            temp = curr.prev;
+            curr.prev = curr.next;
+            curr.next = temp;
+            curr = curr.prev;
+        }
+        if (temp != null) {
+            tail = head;
+            head = temp.prev;
+        }
+    }
+}`,
+    python: `# Python: Doubly Linked List
+class Node:
+    def __init__(self, val):
+        self.data = val
+        self.prev = None
+        self.next = None
+
+class DoublyLinkedList:
+    def __init__(self):
+        self.head = None
+        self.tail = None
+
+    def insert_head(self, val):
+        new_node = Node(val)
+        new_node.next = self.head
+        if self.head:
+            self.head.prev = new_node
+        self.head = new_node
+        if not self.tail:
+            self.tail = new_node
+
+    def insert_tail(self, val):
+        new_node = Node(val)
+        new_node.prev = self.tail
+        if self.tail:
+            self.tail.next = new_node
+        self.tail = new_node
+        if not self.head:
+            self.head = new_node
+
+    def forward_traversal(self):
+        curr = self.head
+        while curr:
+            print(curr.data, end=" <-> ")
+            curr = curr.next
+        print("NULL")
+
+    def backward_traversal(self):
+        curr = self.tail
+        while curr:
+            print(curr.data, end=" <-> ")
+            curr = curr.prev
+        print("NULL")
+
+    def reverse(self):
+        curr = self.head
+        temp = None
+        while curr:
+            temp = curr.prev
+            curr.prev = curr.next
+            curr.next = temp
+            curr = curr.prev
+        if temp:
+            self.tail = self.head
+            self.head = temp.prev`,
+    javascript: `// JavaScript: Doubly Linked List
+class Node {
+  constructor(val) {
+    this.data = val;
+    this.prev = null;
+    this.next = null;
+  }
+}
+
+class DoublyLinkedList {
+  constructor() {
+    this.head = null;
+    this.tail = null;
+  }
+
+  insertHead(val) {
+    const newNode = new Node(val);
+    newNode.next = this.head;
+    if (this.head) this.head.prev = newNode;
+    this.head = newNode;
+    if (!this.tail) this.tail = newNode;
+  }
+
+  insertTail(val) {
+    const newNode = new Node(val);
+    newNode.prev = this.tail;
+    if (this.tail) this.tail.next = newNode;
+    this.tail = newNode;
+    if (!this.head) this.head = newNode;
+  }
+
+  forwardTraversal() {
+    let curr = this.head;
+    const res = [];
+    while (curr) {
+      res.push(curr.data);
+      curr = curr.next;
+    }
+    return res.join(' ⇄ ') + ' ⇄ NULL';
+  }
+
+  backwardTraversal() {
+    let curr = this.tail;
+    const res = [];
+    while (curr) {
+      res.push(curr.data);
+      curr = curr.prev;
+    }
+    return res.join(' ⇄ ') + ' ⇄ NULL';
+  }
+
+  reverse() {
+    let curr = this.head;
+    let temp = null;
+    while (curr) {
+      temp = curr.prev;
+      curr.prev = curr.next;
+      curr.next = temp;
+      curr = curr.prev;
+    }
+    if (temp) {
+      this.tail = this.head;
+      this.head = temp.prev;
+    }
+  }
+}`
+  },
+  circularLinkedList: {
+    cpp: `// C++: Circular Linked List (Danh sách liên kết vòng)
+#include <iostream>
+using namespace std;
+
+struct Node {
+    int data;
+    Node* next;
+    Node(int val) : data(val), next(nullptr) {}
+};
+
+class CircularLinkedList {
+public:
+    Node* head = nullptr;
+    Node* tail = nullptr;
+
+    void insertHead(int val) {
+        Node* newNode = new Node(val);
+        if (!head) {
+            head = tail = newNode;
+            newNode->next = head;
+        } else {
+            newNode->next = head;
+            tail->next = newNode;
+            head = newNode;
+        }
+    }
+
+    void insertTail(int val) {
+        Node* newNode = new Node(val);
+        if (!tail) {
+            head = tail = newNode;
+            newNode->next = head;
+        } else {
+            tail->next = newNode;
+            newNode->next = head;
+            tail = newNode;
+        }
+    }
+
+    void traverse() {
+        if (!head) return;
+        Node* curr = head;
+        do {
+            cout << curr->data << " -> ";
+            curr = curr->next;
+        } while (curr != head);
+        cout << "(loop back to head)\\n";
+    }
+};`,
+    java: `// Java: Circular Linked List
+class Node {
+    int data;
+    Node next;
+    Node(int val) { this.data = val; }
+}
+
+public class CircularLinkedList {
+    Node head = null;
+    Node tail = null;
+
+    public void insertHead(int val) {
+        Node newNode = new Node(val);
+        if (head == null) {
+            head = tail = newNode;
+            newNode.next = head;
+        } else {
+            newNode.next = head;
+            tail.next = newNode;
+            head = newNode;
+        }
+    }
+
+    public void insertTail(int val) {
+        Node newNode = new Node(val);
+        if (tail == null) {
+            head = tail = newNode;
+            newNode.next = head;
+        } else {
+            tail.next = newNode;
+            newNode.next = head;
+            tail = newNode;
+        }
+    }
+}`,
+    python: `# Python: Circular Linked List
+class Node:
+    def __init__(self, val):
+        self.data = val
+        self.next = None
+
+class CircularLinkedList:
+    def __init__(self):
+        self.head = None
+        self.tail = None
+
+    def insert_head(self, val):
+        new_node = Node(val)
+        if not self.head:
+            self.head = self.tail = new_node
+            new_node.next = self.head
+        else:
+            new_node.next = self.head
+            self.tail.next = new_node
+            self.head = new_node
+
+    def insert_tail(self, val):
+        new_node = Node(val)
+        if not self.tail:
+            self.head = self.tail = new_node
+            new_node.next = self.head
+        else:
+            self.tail.next = new_node
+            new_node.next = self.head
+            self.tail = new_node`,
+    javascript: `// JavaScript: Circular Linked List
+class Node {
+  constructor(val) {
+    this.data = val;
+    this.next = null;
+  }
+}
+
+class CircularLinkedList {
+  constructor() {
+    this.head = null;
+    this.tail = null;
+  }
+  insertHead(val) {
+    const newNode = new Node(val);
+    if (!this.head) {
+      this.head = this.tail = newNode;
+      newNode.next = this.head;
+    } else {
+      newNode.next = this.head;
+      this.tail.next = newNode;
+      this.head = newNode;
+    }
+  }
+  insertTail(val) {
+    const newNode = new Node(val);
+    if (!this.tail) {
+      this.head = this.tail = newNode;
+      newNode.next = this.head;
+    } else {
+      this.tail.next = newNode;
+      newNode.next = this.head;
+      this.tail = newNode;
+    }
+  }
+}`
+  },
+  deque: {
+    cpp: `// C++: Deque (Double-Ended Queue)
+#include <iostream>
+#include <deque>
+using namespace std;
+
+int main() {
+    deque<int> dq;
+    dq.push_front(10);
+    dq.push_back(20);
+    dq.push_front(5);
+
+    int front = dq.front(); // 5
+    int back = dq.back();   // 20
+
+    dq.pop_front();
+    dq.pop_back();
+    return 0;
+}`,
+    java: `// Java: Deque Implementation
+import java.util.ArrayDeque;
+import java.util.Deque;
+
+public class MyDeque {
+    public static void main(String[] args) {
+        Deque<Integer> dq = new ArrayDeque<>();
+        dq.addFirst(10);
+        dq.addLast(20);
+        dq.removeFirst();
+        dq.removeLast();
+    }
+}`,
+    python: `# Python: Deque Implementation
+from collections import deque
+
+dq = deque()
+dq.appendleft(10) # pushFront
+dq.append(20)     # pushBack
+dq.popleft()      # popFront
+dq.pop()          # popBack`,
+    javascript: `// JavaScript: Deque Implementation
+class Deque {
+  constructor() {
+    this.items = [];
+  }
+  pushFront(val) { this.items.unshift(val); }
+  pushBack(val)  { this.items.push(val); }
+  popFront()     { return this.items.shift(); }
+  popBack()      { return this.items.pop(); }
+  peekFront()    { return this.items[0]; }
+  peekRear()     { return this.items[this.items.length - 1]; }
+}`
+  },
   bst: {
     cpp: `// C++: Binary Search Tree (BST)
 #include <iostream>

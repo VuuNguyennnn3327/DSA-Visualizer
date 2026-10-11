@@ -7,6 +7,7 @@
 
 import { player } from './player.js';
 import { soundFX } from './audio.js';
+import { linearInteractive } from './linear-interactive.js';
 
 export class Renderer {
   constructor() {
@@ -653,7 +654,16 @@ export class Renderer {
       this.renderQueue(step);
     } else if (type === 'linkedList') {
       this.renderLinkedList(step);
+    } else if (type === 'doublyLinkedList') {
+      this.renderDoublyLinkedList(step);
+    } else if (type === 'circularLinkedList') {
+      this.renderCircularLinkedList(step);
+    } else if (type === 'deque') {
+      this.renderDeque(step);
     }
+
+    // Kích hoạt toàn bộ tương tác 2 chiều cấp cao (Inline Edit, Drag-Drop Dock, Trash Bin, Sandbox)
+    linearInteractive.attachInteractions(step, algo);
   }
 
   /**
@@ -893,6 +903,366 @@ export class Renderer {
   }
 
   /**
+   * Trực quan hóa Danh Sách Liên Kết Đôi (Doubly Linked List)
+   */
+  renderDoublyLinkedList(step) {
+    if (!this.canvasContainer) return;
+    this.canvasContainer.innerHTML = '';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'dll-canvas-wrapper';
+
+    const nodes = step.nodes || [];
+    const pointers = step.pointers || {};
+    const activeNodeId = step.activeNodeId;
+    const isFound = step.activeAction === 'search_found';
+    const isForward = step.activeAction === 'traverse_forward';
+    const isBackward = step.activeAction === 'traverse_backward';
+
+    if (nodes.length === 0) {
+      const nullHead = document.createElement('div');
+      nullHead.className = 'dll-empty-notice';
+      nullHead.innerHTML = `
+        <div class="dll-null-badge is-head-null">
+          <span class="dll-null-icon">⏚</span>
+          <span>NULL ⮂ HEAD / TAIL ⮂ NULL</span>
+        </div>
+        <div class="dll-empty-text">Danh sách liên kết đôi đang rỗng. Hãy bấm ➕ Thêm đầu hoặc ➕ Thêm đuôi để bắt đầu!</div>
+      `;
+      wrapper.appendChild(nullHead);
+    } else {
+      // 1. Badge NULL bên trái (Head.prev trỏ về NULL)
+      const leftNull = document.createElement('div');
+      leftNull.className = 'dll-null-badge dll-null-left';
+      leftNull.innerHTML = '<span class="dll-null-icon">⏚</span><span>NULL</span>';
+      wrapper.appendChild(leftNull);
+
+      // Cầu nối NULL <-> Head
+      const leftArrow = document.createElement('div');
+      leftArrow.className = 'dll-arrow-connector dll-arrow-terminal';
+      leftArrow.innerHTML = `
+        <svg class="dll-arrow-svg" viewBox="0 0 28 20" width="26" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="24" y1="10" x2="4" y2="10"></line>
+          <polyline points="10 5 4 10 10 15"></polyline>
+        </svg>
+      `;
+      wrapper.appendChild(leftArrow);
+
+      // 2. Render từng Node
+      nodes.forEach((node, idx) => {
+        const card = document.createElement('div');
+        card.className = 'dll-node-card';
+        if (activeNodeId === node.id) {
+          if (isFound) card.classList.add('is-found');
+          else if (isForward) card.classList.add('is-forward-active');
+          else if (isBackward) card.classList.add('is-backward-active');
+          else card.classList.add('is-active');
+        }
+
+        // Pointer tags container: HEAD, TAIL, CURR
+        const tagsContainer = document.createElement('div');
+        tagsContainer.className = 'dll-pointer-tags';
+
+        if (pointers.head === node.id) {
+          const tag = document.createElement('span');
+          tag.className = 'dll-pointer-tag dll-tag-head';
+          tag.textContent = 'HEAD ⬇';
+          tagsContainer.appendChild(tag);
+        }
+        if (pointers.tail === node.id) {
+          const tag = document.createElement('span');
+          tag.className = 'dll-pointer-tag dll-tag-tail';
+          tag.textContent = 'TAIL ⬇';
+          tagsContainer.appendChild(tag);
+        }
+        if (pointers.curr === node.id) {
+          const tag = document.createElement('span');
+          tag.className = 'dll-pointer-tag dll-tag-curr';
+          tag.textContent = 'CURR ⬇';
+          tagsContainer.appendChild(tag);
+        }
+        if (tagsContainer.children.length > 0) {
+          card.appendChild(tagsContainer);
+        }
+
+        // 3-Chamber Capsule: [ prev | DATA | next ]
+        const capsule = document.createElement('div');
+        capsule.className = 'dll-node-capsule';
+
+        // Khoang 1: Prev
+        const prevBox = document.createElement('div');
+        prevBox.className = 'dll-node-prev';
+        prevBox.title = `Con trỏ prev: trỏ về node liền trước (${idx > 0 ? nodes[idx - 1].value : 'NULL'})`;
+        prevBox.innerHTML = '<span class="dll-box-icon">◄</span><span class="dll-box-label">prev</span>';
+        capsule.appendChild(prevBox);
+
+        // Khoang 2: Data
+        const dataBox = document.createElement('div');
+        dataBox.className = 'dll-node-data';
+        dataBox.textContent = node.value;
+        capsule.appendChild(dataBox);
+
+        // Khoang 3: Next
+        const nextBox = document.createElement('div');
+        nextBox.className = 'dll-node-next';
+        nextBox.title = `Con trỏ next: trỏ về node liền sau (${idx < nodes.length - 1 ? nodes[idx + 1].value : 'NULL'})`;
+        nextBox.innerHTML = '<span class="dll-box-label">next</span><span class="dll-box-icon">►</span>';
+        capsule.appendChild(nextBox);
+
+        card.appendChild(capsule);
+
+        // Chỉ số index dưới chân node
+        const idxBadge = document.createElement('div');
+        idxBadge.className = 'dll-node-index';
+        idxBadge.textContent = `[${idx}]`;
+        card.appendChild(idxBadge);
+
+        wrapper.appendChild(card);
+
+        // 3. Mũi tên 2 chiều giữa 2 node (trên trỏ sang phải, dưới trỏ sang trái)
+        if (idx < nodes.length - 1) {
+          const connector = document.createElement('div');
+          connector.className = 'dll-arrow-connector';
+          if (isForward && activeNodeId === node.id) connector.classList.add('is-traversing-forward');
+          if (isBackward && activeNodeId === nodes[idx + 1].id) connector.classList.add('is-traversing-backward');
+
+          connector.innerHTML = `
+            <div class="dll-arrow-row dll-arrow-next" title="Con trỏ next ➔">
+              <span class="dll-arrow-text">next</span>
+              <svg viewBox="0 0 28 10" width="24" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="2" y1="5" x2="24" y2="5"></line>
+                <polyline points="19 1 24 5 19 9"></polyline>
+              </svg>
+            </div>
+            <div class="dll-arrow-row dll-arrow-prev" title="⬅ Con trỏ prev">
+              <svg viewBox="0 0 28 10" width="24" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="26" y1="5" x2="4" y2="5"></line>
+                <polyline points="9 1 4 5 9 9"></polyline>
+              </svg>
+              <span class="dll-arrow-text">prev</span>
+            </div>
+          `;
+          wrapper.appendChild(connector);
+        }
+      });
+
+      // 4. Cầu nối Tail -> NULL bên phải
+      const rightArrow = document.createElement('div');
+      rightArrow.className = 'dll-arrow-connector dll-arrow-terminal';
+      rightArrow.innerHTML = `
+        <svg class="dll-arrow-svg" viewBox="0 0 28 20" width="26" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" y1="10" x2="24" y2="10"></line>
+          <polyline points="18 5 24 10 18 15"></polyline>
+        </svg>
+      `;
+      wrapper.appendChild(rightArrow);
+
+      // Badge NULL bên phải
+      const rightNull = document.createElement('div');
+      rightNull.className = 'dll-null-badge dll-null-right';
+      rightNull.innerHTML = '<span class="dll-null-icon">⏚</span><span>NULL</span>';
+      wrapper.appendChild(rightNull);
+    }
+
+    this.canvasContainer.appendChild(wrapper);
+  }
+
+  /**
+   * Trực quan hóa Danh Sách Liên Kết Vòng (Circular Linked List)
+   */
+  renderCircularLinkedList(step) {
+    if (!this.canvasContainer) return;
+    this.canvasContainer.innerHTML = '';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'cll-canvas-wrapper';
+
+    const nodes = step.nodes || [];
+    const pointers = step.pointers || {};
+    const activeNodeId = step.activeNodeId;
+    const isLoopBack = step.activeAction === 'loop_back';
+
+    if (nodes.length === 0) {
+      const emptyNotice = document.createElement('div');
+      emptyNotice.className = 'll-empty-notice';
+      emptyNotice.innerHTML = `
+        <div class="ll-null-badge is-head-null">
+          <span class="ll-null-icon">🔄</span>
+          <span>DSLK VÒNG RỖNG (Head = Tail = NULL)</span>
+        </div>
+        <div class="ll-empty-text">Chưa có phần tử nào. Bấm ➕ Thêm đầu hoặc ➕ Thêm đuôi để tạo vòng lặp!</div>
+      `;
+      wrapper.appendChild(emptyNotice);
+    } else {
+      const row = document.createElement('div');
+      row.className = 'cll-nodes-row';
+
+      nodes.forEach((node, idx) => {
+        const card = document.createElement('div');
+        card.className = 'll-node-card cll-node-card';
+        if (activeNodeId === node.id) {
+          card.classList.add('is-active');
+          if (isLoopBack) card.classList.add('is-found');
+        }
+
+        // Pointer tags
+        if (pointers.head === node.id) {
+          const tag = document.createElement('span');
+          tag.className = 'll-pointer-tag ll-tag-head';
+          tag.textContent = 'HEAD ⬇';
+          card.appendChild(tag);
+        }
+        if (pointers.tail === node.id) {
+          const tag = document.createElement('span');
+          tag.className = 'll-pointer-tag ll-tag-tail';
+          tag.textContent = 'TAIL ⬇';
+          card.appendChild(tag);
+        }
+        if (pointers.curr === node.id) {
+          const tag = document.createElement('span');
+          tag.className = 'll-pointer-tag ll-tag-curr';
+          tag.textContent = 'CURR ⬇';
+          card.appendChild(tag);
+        }
+
+        // Capsule 2 khoang
+        const capsule = document.createElement('div');
+        capsule.className = 'll-node-capsule';
+
+        const dataBox = document.createElement('div');
+        dataBox.className = 'll-node-data';
+        dataBox.textContent = node.value;
+        capsule.appendChild(dataBox);
+
+        const nextBox = document.createElement('div');
+        nextBox.className = 'll-node-next';
+        nextBox.innerHTML = '<span class="ll-next-dot"></span><span class="ll-next-text">next</span>';
+        capsule.appendChild(nextBox);
+
+        card.appendChild(capsule);
+        row.appendChild(card);
+
+        // Mũi tên thẳng sang node kế tiếp
+        if (idx < nodes.length - 1) {
+          const arrow = document.createElement('div');
+          arrow.className = 'll-arrow-connector';
+          arrow.innerHTML = `
+            <svg class="ll-arrow-svg" viewBox="0 0 28 16" width="24" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="2" y1="8" x2="22" y2="8"></line>
+              <polyline points="16 3 22 8 16 13"></polyline>
+            </svg>
+          `;
+          row.appendChild(arrow);
+        }
+      });
+
+      wrapper.appendChild(row);
+
+      // Mũi tên uốn cong vòng ngược từ Tail về Head (Curved Loop Arc)
+      if (nodes.length > 0) {
+        const loopBanner = document.createElement('div');
+        loopBanner.className = `cll-loop-banner ${isLoopBack ? 'is-looping-active' : ''}`;
+        loopBanner.innerHTML = `
+          <div class="cll-loop-arrow-line">
+            <span class="cll-loop-label">Tail.next</span>
+            <svg class="cll-loop-svg" viewBox="0 0 400 36" preserveAspectRatio="none">
+              <path d="M 380,6 C 380,30 20,30 20,6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="6,4"></path>
+              <polyline points="14,14 20,6 26,14" fill="none" stroke="currentColor" stroke-width="2.5"></polyline>
+            </svg>
+            <span class="cll-loop-label">➔ Head</span>
+          </div>
+          <span class="cll-loop-note">🔄 Vòng lặp khép kín: Tail trỏ ngược về Head (Không có NULL)</span>
+        `;
+        wrapper.appendChild(loopBanner);
+      }
+    }
+
+    this.canvasContainer.appendChild(wrapper);
+  }
+
+  /**
+   * Trực quan hóa Hàng Đợi Hai Đầu (Deque)
+   */
+  renderDeque(step) {
+    if (!this.canvasContainer) return;
+    this.canvasContainer.innerHTML = '';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'deque-canvas-wrapper';
+
+    const items = step.deque || [];
+    const capacity = step.capacity || 8;
+    const activeEnds = step.activeEnds || [];
+
+    const tube = document.createElement('div');
+    tube.className = 'deque-tube';
+
+    if (items.length === 0) {
+      const emptyNote = document.createElement('div');
+      emptyNote.style.color = 'var(--text-muted)';
+      emptyNote.style.fontSize = '13px';
+      emptyNote.style.margin = 'auto';
+      emptyNote.textContent = '⇥ (Deque rỗng - Size = 0 / ' + capacity + ') ⇤';
+      tube.appendChild(emptyNote);
+    } else {
+      items.forEach((item, idx) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'deque-item';
+
+        const isFront = idx === 0;
+        const isRear = idx === items.length - 1;
+
+        if (isFront) itemEl.classList.add('is-front');
+        if (isRear) itemEl.classList.add('is-rear');
+        if (isFront && activeEnds.includes('front')) itemEl.classList.add('is-end-active');
+        if (isRear && activeEnds.includes('rear')) itemEl.classList.add('is-end-active');
+
+        if (isFront && isRear) {
+          const badge = document.createElement('span');
+          badge.className = 'queue-pointer-label queue-pointer-front';
+          badge.textContent = 'FRONT & REAR';
+          itemEl.appendChild(badge);
+        } else if (isFront) {
+          const badge = document.createElement('span');
+          badge.className = 'queue-pointer-label queue-pointer-front';
+          badge.textContent = 'FRONT ⬇';
+          itemEl.appendChild(badge);
+        } else if (isRear) {
+          const badge = document.createElement('span');
+          badge.className = 'queue-pointer-label queue-pointer-rear';
+          badge.textContent = 'REAR ⬇';
+          itemEl.appendChild(badge);
+        }
+
+        const valSpan = document.createElement('span');
+        valSpan.className = 'deque-val-text';
+        valSpan.textContent = item.value;
+        itemEl.appendChild(valSpan);
+
+        const idxSpan = document.createElement('span');
+        idxSpan.style.fontSize = '10px';
+        idxSpan.style.opacity = '0.6';
+        idxSpan.textContent = `[${idx}]`;
+        itemEl.appendChild(idxSpan);
+
+        tube.appendChild(itemEl);
+      });
+    }
+
+    const flowNote = document.createElement('div');
+    flowNote.className = 'deque-flow-note';
+    flowNote.innerHTML = `
+      <span class="deque-end-indicator ${activeEnds.includes('front') ? 'is-active' : ''}">⬅ FRONT (pushFront / popFront)</span>
+      <span>• Ống mở 2 đầu •</span>
+      <span class="deque-end-indicator ${activeEnds.includes('rear') ? 'is-active' : ''}">REAR (pushBack / popBack) ➔</span>
+    `;
+
+    wrapper.appendChild(tube);
+    wrapper.appendChild(flowNote);
+    this.canvasContainer.appendChild(wrapper);
+  }
+
+  /**
    * Tạo định dạng hiển thị thực thi mảng trực quan (<->) theo từng bước
    * Mô phỏng chuẩn xác cách chạy tay từng bước trên giấy / bảng với vị trí cột cố định
    */
@@ -1022,6 +1392,73 @@ export class Renderer {
           ? nodes.map(n => `[${n.value}]`).join(' ➔ ')
           : 'NULL';
         arrayFlowHtml = `<span style="font-family:var(--font-mono); font-size:12px;">Head ➔ ${nodeStr}${nodes.length > 0 ? ' ➔ NULL' : ''}</span>`;
+      } else if (step.linearType === 'doublyLinkedList') {
+        const nodes = step.nodes || [];
+        if (step.activeAction?.includes('insert_head')) {
+          actionBadge = `<span class="trace-action-badge swp">➕ Thêm đầu</span>`;
+        } else if (step.activeAction?.includes('insert_tail')) {
+          actionBadge = `<span class="trace-action-badge swp">➕ Thêm đuôi</span>`;
+        } else if (step.activeAction?.includes('insert_at')) {
+          actionBadge = `<span class="trace-action-badge swp">📍 Chèn K</span>`;
+        } else if (step.activeAction?.includes('delete_head')) {
+          actionBadge = `<span class="trace-action-badge err">🗑️ Xóa đầu</span>`;
+        } else if (step.activeAction?.includes('delete_tail')) {
+          actionBadge = `<span class="trace-action-badge err">🗑️ Xóa đuôi</span>`;
+        } else if (step.activeAction?.includes('delete_val')) {
+          actionBadge = `<span class="trace-action-badge err">🗑️ Xóa(${step.activeItem ?? ''})</span>`;
+        } else if (step.activeAction?.includes('clear')) {
+          actionBadge = `<span class="trace-action-badge err">🧹 Xóa rỗng</span>`;
+        } else if (step.activeAction?.includes('search_found')) {
+          actionBadge = `<span class="trace-action-badge ok">★ Tìm thấy(${step.activeItem ?? ''})</span>`;
+        } else if (step.activeAction?.includes('search')) {
+          actionBadge = `<span class="trace-action-badge cmp">🔍 Tìm(${step.activeItem ?? ''})</span>`;
+        } else if (step.activeAction?.includes('traverse_forward')) {
+          actionBadge = `<span class="trace-action-badge ok">➡️ Duyệt xuôi</span>`;
+        } else if (step.activeAction?.includes('traverse_backward')) {
+          actionBadge = `<span class="trace-action-badge ok">⬅️ Duyệt ngược</span>`;
+        } else if (step.activeAction?.includes('reverse')) {
+          actionBadge = `<span class="trace-action-badge swp">🔄 Đảo DLL</span>`;
+        } else {
+          actionBadge = '<span class="trace-action-badge init">🚀 Khởi tạo</span>';
+        }
+        const nodeStr = nodes.length > 0
+          ? nodes.map(n => `[${n.value}]`).join(' ⇄ ')
+          : 'NULL';
+        arrayFlowHtml = `<span style="font-family:var(--font-mono); font-size:12px;">NULL ⮂ ${nodeStr} ⮂ NULL</span>`;
+      } else if (step.linearType === 'circularLinkedList') {
+        const nodes = step.nodes || [];
+        if (step.activeAction?.includes('insert_head')) {
+          actionBadge = `<span class="trace-action-badge swp">➕ Thêm đầu</span>`;
+        } else if (step.activeAction?.includes('insert_tail')) {
+          actionBadge = `<span class="trace-action-badge swp">➕ Thêm đuôi</span>`;
+        } else if (step.activeAction?.includes('round_robin')) {
+          actionBadge = `<span class="trace-action-badge ok">⚡ Round-Robin</span>`;
+        } else if (step.activeAction?.includes('loop_back')) {
+          actionBadge = `<span class="trace-action-badge swp">🔄 Uốn vòng Tail➔Head</span>`;
+        } else {
+          actionBadge = '<span class="trace-action-badge init">🔄 DSLK Vòng</span>';
+        }
+        const nodeStr = nodes.length > 0
+          ? nodes.map(n => `[${n.value}]`).join(' ➔ ')
+          : 'Rỗng';
+        arrayFlowHtml = `<span style="font-family:var(--font-mono); font-size:12px;">Head ➔ ${nodeStr} ⮐ (Tail.next)</span>`;
+      } else if (step.linearType === 'deque') {
+        const d = step.deque || [];
+        if (step.activeAction?.includes('push_front')) {
+          actionBadge = `<span class="trace-action-badge swp">📥 PushFront(${step.activeItem ?? ''})</span>`;
+        } else if (step.activeAction?.includes('push_back')) {
+          actionBadge = `<span class="trace-action-badge swp">📥 PushBack(${step.activeItem ?? ''})</span>`;
+        } else if (step.activeAction?.includes('pop_front')) {
+          actionBadge = `<span class="trace-action-badge err">📤 PopFront(${step.activeItem ?? ''})</span>`;
+        } else if (step.activeAction?.includes('pop_back')) {
+          actionBadge = `<span class="trace-action-badge err">📤 PopBack(${step.activeItem ?? ''})</span>`;
+        } else {
+          actionBadge = '<span class="trace-action-badge init">🚪 Deque</span>';
+        }
+        const dStr = d.length > 0
+          ? d.map(x => `[${x.value}]`).join(' ➔ ')
+          : '(Rỗng)';
+        arrayFlowHtml = `<span style="font-family:var(--font-mono); font-size:12px;">Front ➔ ${dStr} ➔ Rear</span>`;
       }
 
       return { actionBadge, arrayFlowHtml };
