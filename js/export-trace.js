@@ -49,6 +49,58 @@ function generateTracePrintHTML(algo, steps = []) {
         actionBadgeClass = 'badge-ok';
         actionText = evalRes?.badgeText || '✓ Bạn đổi';
       }
+    } else if (step.isTree) {
+      if (step.activeAction?.includes('unbalanced')) {
+        actionBadgeClass = 'badge-err';
+        actionText = '⚠️ Mất cân bằng';
+      } else if (step.activeAction?.includes('rotate')) {
+        actionBadgeClass = 'badge-swp';
+        actionText = '🔄 Xoay cây AVL';
+      } else if (step.activeAction?.includes('search_found')) {
+        actionBadgeClass = 'badge-ok';
+        actionText = `★ Tìm thấy (${step.activeItem ?? ''})`;
+      } else if (step.activeAction?.includes('search')) {
+        actionBadgeClass = 'badge-cmp';
+        actionText = '🔍 Tra cứu';
+      } else if (step.activeAction?.includes('inorder')) {
+        actionBadgeClass = 'badge-ok';
+        actionText = '📖 Duyệt Inorder';
+      } else if (step.activeAction?.includes('swap')) {
+        actionBadgeClass = 'badge-swp';
+        actionText = '🔄 Đổi chỗ Heap';
+      } else if (step.activeAction?.includes('insert')) {
+        actionBadgeClass = 'badge-swp';
+        actionText = `➕ Chèn Node(${step.activeItem ?? ''})`;
+      } else {
+        actionBadgeClass = 'badge-init';
+        actionText = '🌳 Cây';
+      }
+    } else if (step.isLinear) {
+      if (step.activeAction?.includes('push')) {
+        actionBadgeClass = 'badge-swp';
+        actionText = `📥 Push(${step.activeItem ?? ''})`;
+      } else if (step.activeAction?.includes('pop')) {
+        actionBadgeClass = 'badge-swp';
+        actionText = `📤 Pop()`;
+      } else if (step.activeAction?.includes('enqueue')) {
+        actionBadgeClass = 'badge-swp';
+        actionText = `📥 Enqueue(${step.activeItem ?? ''})`;
+      } else if (step.activeAction?.includes('dequeue')) {
+        actionBadgeClass = 'badge-swp';
+        actionText = `📤 Dequeue()`;
+      } else if (step.activeAction?.includes('peek')) {
+        actionBadgeClass = 'badge-cmp';
+        actionText = `👁 Peek / Front`;
+      } else if (step.activeAction?.includes('insert')) {
+        actionBadgeClass = 'badge-swp';
+        actionText = `➕ Chèn Node`;
+      } else if (step.activeAction?.includes('search')) {
+        actionBadgeClass = 'badge-cmp';
+        actionText = `🔍 Tìm kiếm`;
+      } else if (step.activeAction?.includes('reverse')) {
+        actionBadgeClass = 'badge-swp';
+        actionText = `🔄 Đảo ngược`;
+      }
     } else if (step.highlights) {
       const hlValues = Object.values(step.highlights);
       if (hlValues.includes('swp')) {
@@ -66,32 +118,58 @@ function generateTracePrintHTML(algo, steps = []) {
       }
     }
 
-    // 2. Định dạng dãy phần tử với ký hiệu <->
-    let swp1 = -1, swp2 = -1;
-    if (step.swappedPair) {
-      swp1 = Math.min(step.swappedPair[0], step.swappedPair[1]);
-      swp2 = Math.max(step.swappedPair[0], step.swappedPair[1]);
-    } else if (step.highlights) {
-      const activeIndices = Object.entries(step.highlights)
-        .filter(([_, st]) => st === 'cmp' || st === 'swp' || st === 'err')
-        .map(([k]) => Number(k))
-        .sort((a, b) => a - b);
-      if (activeIndices.length === 2 && Math.abs(activeIndices[0] - activeIndices[1]) === 1) {
-        swp1 = activeIndices[0];
-        swp2 = activeIndices[1];
-      }
-    }
-
-    const itemTokens = [];
-    for (let k = 0; k < arr.length; k++) {
-      const val = arr[k].value;
-      if (k === swp1 && swp2 === swp1 + 1) {
-        itemTokens.push(`${val} <span class="arrow-mark">&lt;-&gt;</span>`);
+    // 2. Định dạng dãy phần tử với ký hiệu <-> hoặc cấu trúc cây/tuyến tính
+    let arrFormatted = '';
+    if (step.isTree) {
+      if (step.treeType === 'heap' && step.array) {
+        arrFormatted = `A = [ ${step.array.map(x => x.value).join(', ')} ] (HeapSize: ${step.heapSize ?? '-'})`;
       } else {
-        itemTokens.push(String(val));
+        arrFormatted = `[ Root: ${step.root ? step.root.val : 'NULL'} | Xét: ${step.activeItem ?? '-'} ]`;
       }
+    } else if (step.isLinear) {
+      if (step.linearType === 'stack') {
+        const stk = step.stack || [];
+        arrFormatted = stk.length > 0
+          ? `Đáy [ ${stk.map((x, i) => i === step.top ? `<strong>${x.value} (TOP)</strong>` : x.value).join(', ')} ]`
+          : `[ Stack Rỗng ]`;
+      } else if (step.linearType === 'queue') {
+        const q = step.queue || [];
+        arrFormatted = q.length > 0
+          ? `Front ➔ ${q.map(x => `[${x.value}]`).join(' ➔ ')} ➔ Rear`
+          : `[ Queue Rỗng ]`;
+      } else if (step.linearType === 'linkedList') {
+        const nodes = step.nodes || [];
+        arrFormatted = nodes.length > 0
+          ? `Head ➔ ${nodes.map(n => `[${n.value}]`).join(' ➔ ')} ➔ NULL`
+          : `Head ➔ NULL`;
+      }
+    } else {
+      let swp1 = -1, swp2 = -1;
+      if (step.swappedPair) {
+        swp1 = Math.min(step.swappedPair[0], step.swappedPair[1]);
+        swp2 = Math.max(step.swappedPair[0], step.swappedPair[1]);
+      } else if (step.highlights) {
+        const activeIndices = Object.entries(step.highlights)
+          .filter(([_, st]) => st === 'cmp' || st === 'swp' || st === 'err')
+          .map(([k]) => Number(k))
+          .sort((a, b) => a - b);
+        if (activeIndices.length === 2 && Math.abs(activeIndices[0] - activeIndices[1]) === 1) {
+          swp1 = activeIndices[0];
+          swp2 = activeIndices[1];
+        }
+      }
+
+      const itemTokens = [];
+      for (let k = 0; k < arr.length; k++) {
+        const val = arr[k].value;
+        if (k === swp1 && swp2 === swp1 + 1) {
+          itemTokens.push(`${val} <span class="arrow-mark">&lt;-&gt;</span>`);
+        } else {
+          itemTokens.push(String(val));
+        }
+      }
+      arrFormatted = `[ ${itemTokens.join('  ')} ]`;
     }
-    const arrFormatted = `[ ${itemTokens.join('  ')} ]`;
 
     // 3. Câu giải thích
     const cleanMsg = (step.message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');

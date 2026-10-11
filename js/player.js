@@ -25,11 +25,14 @@ class PlayerController {
   play() {
     if (state.isPlaying) return;
 
-    // Nếu đang ở chế độ Xếp tự do, tự động chốt mảng và sinh các bước giải để phát
-    if (state.interactionMode === 'setup') {
+    // Nếu đang ở chế độ Xếp tự do của Sort, tự động chốt mảng và sinh các bước giải để phát
+    const algo = state.getCurrentAlgorithm();
+    const isSort = algo && !algo.isLinear && !algo.isTree && !algo.isSearch;
+
+    if (isSort && state.interactionMode === 'setup') {
       state.setInteractionMode('practice');
       state.computeSteps();
-    } else if (state.userRearranged) {
+    } else if (isSort && state.userRearranged) {
       state.continueFromUserArrangement();
     }
 
@@ -88,10 +91,13 @@ class PlayerController {
    */
   stepForward() {
     this.pause();
-    if (state.interactionMode === 'setup') {
+    const algo = state.getCurrentAlgorithm();
+    const isSort = algo && !algo.isLinear && !algo.isTree && !algo.isSearch;
+
+    if (isSort && state.interactionMode === 'setup') {
       state.setInteractionMode('practice');
       state.computeSteps();
-    } else if (state.userRearranged) {
+    } else if (isSort && state.userRearranged) {
       state.continueFromUserArrangement();
     }
     if (state.currentStepIndex < state.steps.length - 1) {

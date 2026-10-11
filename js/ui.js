@@ -4,18 +4,22 @@
  * form cấu hình mảng, modal tổng quan, modal xem mã nguồn (C++, Java, Python, JS).
  */
 
-import { algorithms, algorithmsByGroup, GROUP_ORDER, algorithmUseCases } from './algorithms/index.js';
+import { algorithms, algorithmsByGroup, GROUP_ORDER, GROUP_META, algorithmUseCases } from './algorithms/index.js';
 import { codeSnippets } from './code-snippets.js';
 import { state } from './state.js';
 import { player } from './player.js';
 import { parseArrayInput } from './utils.js';
 import { soundFX } from './audio.js';
 import { exportTraceToPDF } from './export-trace.js';
+import { fireConfetti } from './confetti.js';
+import { getPracticeMission } from './practice-missions.js';
 
 export class UIController {
   constructor(renderer) {
     this.renderer = renderer;
     this.selectedLanguage = 'cpp'; // Mặc định hiển thị code C++
+    this.expandedGroups = new Set(GROUP_ORDER); // Trạng thái mở rộng Accordion trên Sidebar
+    this.practiceTaskIndex = 0; // Chỉ số nhiệm vụ thực hành hiện tại
 
     // DOM Elements
     this.appBody = document.getElementById('app-body');
@@ -97,6 +101,7 @@ export class UIController {
     this.modeSwitchGroup = document.getElementById('mode-switch-group');
     this.btnModeSetup = document.getElementById('btn-mode-setup');
     this.btnModePractice = document.getElementById('btn-mode-practice');
+    this.btnPracticeHint = document.getElementById('btn-practice-hint');
     this.btnRestartPractice = document.getElementById('btn-restart-practice');
 
     // Nút phóng to / thu nhỏ ở góc dưới bên phải bảng phần tử
@@ -116,6 +121,7 @@ export class UIController {
     this.victoryStatAccuracy = document.getElementById('victory-stat-accuracy');
     this.victoryStatCorrect = document.getElementById('victory-stat-correct');
     this.victoryStatWrong = document.getElementById('victory-stat-wrong');
+    this.linearToolbarContainer = document.getElementById('linear-toolbar-container');
 
     this.bindEvents();
     this.updateSoundButton(soundFX.isMuted);
@@ -234,6 +240,7 @@ export class UIController {
     // Chế độ tương tác & Nút làm lại mảng
     this.btnModeSetup?.addEventListener('click', () => this.setMode('setup'));
     this.btnModePractice?.addEventListener('click', () => this.setMode('practice'));
+    this.btnPracticeHint?.addEventListener('click', () => this.handleMissionHint());
     this.btnRestartPractice?.addEventListener('click', () => this.restartPractice());
 
     // Toggle Xem chi tiết mô tả thuật toán ở dưới cùng
@@ -372,11 +379,34 @@ export class UIController {
   }
 
   /**
-   * Chuyển đổi chế độ tương tác mảng (Xếp tự do vs Làm bài)
+   * Chuyển đổi chế độ tương tác (Xếp tự do vs Làm bài)
    */
   setMode(mode) {
     state.setInteractionMode(mode);
     this.updateModeUI(mode);
+
+    const algo = state.getCurrentAlgorithm();
+    if (!algo) return;
+
+    if (algo.isLinear || algo.isTree) {
+      this.practiceTaskIndex = 0;
+      const mission = getPracticeMission(algo.id);
+      if (mode === 'practice' && mission) {
+        const firstTask = mission.tasks[0];
+        this.clearFeedback();
+        this.showFeedback(`🎯 [Làm bài - ${mission.title}] Bước 1/${mission.tasks.length}: ${firstTask.desc}. (Bấm '💡 Gợi ý' để được trợ giúp)`, false);
+      } else {
+        this.clearFeedback();
+        this.showFeedback(`🛠️ Chế độ Tự do: Bạn có thể tự do nhập dữ liệu và thử nghiệm các nút thao tác trên ${algo.name}. Nhấn 'Làm bài' nếu muốn giải bài tập!`, false);
+      }
+    } else if (algo.isSearch) {
+      this.clearFeedback();
+      if (mode === 'practice') {
+        this.showFeedback(`🎯 [Làm bài - ${algo.name}] Mục tiêu: Tìm giá trị Target = ${state.targetValue}. Bấm '💡 Gợi ý' để được trợ giúp!`, false);
+      } else {
+        this.showFeedback(`🛠️ Chế độ Tự do: Bạn có thể đổi giá trị cần tìm (Target) hoặc đổi mảng tùy ý.`, false);
+      }
+    }
   }
 
   /**
@@ -385,13 +415,111 @@ export class UIController {
   restartPractice() {
     state.restartPractice();
     this.updateModeUI(state.interactionMode);
+
+    const algo = state.getCurrentAlgorithm();
+    if (!algo) return;
+
+    if (algo.isLinear || algo.isTree) {
+      this.practiceTaskIndex = 0;
+      const mission = getPracticeMission(algo.id);
+      this.clearFeedback();
+      if (state.interactionMode === 'practice' && mission) {
+        const firstTask = mission.tasks[0];
+        this.showFeedback(`🔄 Đã làm lại bài tập! Hãy bắt đầu lại từ Bước 1/${mission.tasks.length}: ${firstTask.desc}.`, false);
+      } else {
+        this.showFeedback(`🔄 Đã làm mới cấu trúc ${algo.name} về ban đầu!`, false);
+      }
+    }
+  }
+
+  /**
+   * Cung cấp gợi ý nhiệm vụ thực hành cho cấu trúc dữ liệu mới
+   */
+  handleMissionHint() {
+    const algo = state.getCurrentAlgorithm();
+    if (!algo || (!algo.isLinear && !algo.isTree && !algo.isSearch)) return;
+
+    player.pause();
+    if (state.interactionMode === 'setup') {
+      this.showFeedback("💡 Bạn đang ở chế độ 'Tự do thao tác'. Hãy chuyển sang '🎯 Làm bài' để thực hành bài tập và nhận gợi ý!", false);
+      return;
+    }
+
+    if (algo.isSearch) {
+      soundFX.playHint();
+      this.showFeedback(`💡 Gợi ý ${algo.name}: Giá trị cần tìm là Target = ${state.targetValue}. Hãy bấm nút '▶ Bước tiếp' để xem phần tử đang được xét!`, false);
+      return;
+    }
+
+    const mission = getPracticeMission(algo.id);
+    if (!mission) return;
+
+    const currentTask = mission.tasks[this.practiceTaskIndex];
+    if (!currentTask) {
+      this.showFeedback('🎉 Bạn đã hoàn thành toàn bộ bài tập này rồi!', false);
+      return;
+    }
+
+    soundFX.playHint();
+    this.showFeedback(`💡 Gợi ý [Bước ${this.practiceTaskIndex + 1}/${mission.tasks.length}]: ${currentTask.hint}`, false);
+
+    if (currentTask.buttonId) {
+      const btn = document.getElementById(currentTask.buttonId);
+      if (btn) {
+        btn.classList.add('btn-hint-pulse');
+        setTimeout(() => btn.classList.remove('btn-hint-pulse'), 2400);
+      }
+    }
+  }
+
+  /**
+   * Kiểm tra tiến độ hoàn thành nhiệm vụ thực hành
+   */
+  checkPracticeProgress(actionType) {
+    const algo = state.getCurrentAlgorithm();
+    if (!algo || (!algo.isLinear && !algo.isTree)) return;
+    if (state.interactionMode !== 'practice') return;
+
+    const mission = getPracticeMission(algo.id);
+    if (!mission) return;
+
+    const currentTask = mission.tasks[this.practiceTaskIndex];
+    if (!currentTask) return;
+
+    if (currentTask.id === actionType) {
+      this.practiceTaskIndex++;
+      soundFX.playSwap();
+
+      if (this.practiceTaskIndex >= mission.tasks.length) {
+        // Hoàn thành bài tập xuất sắc!
+        fireConfetti(3200);
+        soundFX.playVictory();
+        const elapsedSec = Math.floor((Date.now() - (state.practiceStats?.startTime || Date.now())) / 1000);
+        this.showFeedback(`🎉 Xuất sắc! Bạn đã hoàn thành 100% bài tập ${mission.title}!`, false);
+        setTimeout(() => {
+          this.openVictoryModal({
+            accuracy: 100,
+            correctCount: mission.tasks.length,
+            wrongCount: 0,
+            elapsedSeconds: elapsedSec
+          });
+        }, 500);
+      } else {
+        const nextTask = mission.tasks[this.practiceTaskIndex];
+        this.showFeedback(`✅ Chính xác! Hoàn thành: ${currentTask.label}. Bước tiếp theo (${this.practiceTaskIndex + 1}/${mission.tasks.length}): ${nextTask.desc}`, false);
+      }
+    }
   }
 
   /**
    * Cập nhật style nút bấm chế độ tương tác
    */
   updateModeUI(mode) {
+    const algo = state.getCurrentAlgorithm();
+    const isSort = algo && !algo.isLinear && !algo.isTree && !algo.isSearch;
+
     if (this.btnModeSetup) {
+      this.btnModeSetup.innerHTML = isSort ? '✏️ Xếp tự do' : '✏️ Tự do thao tác';
       if (mode === 'setup') {
         this.btnModeSetup.classList.add('active', 'btn-primary');
         this.btnModeSetup.classList.remove('btn-secondary');
@@ -452,7 +580,7 @@ export class UIController {
   }
 
   /**
-   * Tạo Sidebar với danh sách thuật toán gom theo 4 nhóm
+   * Tạo Sidebar với danh sách thuật toán gom theo 4 nhóm dạng Accordion thu gọn / mở rộng
    */
   renderSidebar() {
     if (!this.sidebarContainer) return;
@@ -462,13 +590,52 @@ export class UIController {
       const groupAlgos = algorithmsByGroup[groupName] || [];
       if (groupAlgos.length === 0) return;
 
-      const groupEl = document.createElement('div');
-      groupEl.className = 'sidebar-group';
+      const meta = GROUP_META[groupName] || { icon: '📂', name: groupName, badge: `${groupAlgos.length}` };
+      const isExpanded = this.expandedGroups.has(groupName);
 
-      const titleEl = document.createElement('div');
-      titleEl.className = 'sidebar-group-title';
-      titleEl.textContent = groupName;
-      groupEl.appendChild(titleEl);
+      const groupEl = document.createElement('div');
+      groupEl.className = `sidebar-accordion-group ${isExpanded ? 'is-expanded' : 'is-collapsed'}`;
+      groupEl.dataset.group = groupName;
+
+      // Nút Header đóng / mở Accordion
+      const headerBtn = document.createElement('button');
+      headerBtn.className = 'sidebar-accordion-header';
+      headerBtn.type = 'button';
+      headerBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+      headerBtn.title = `Nhấn để ${isExpanded ? 'thu gọn' : 'mở rộng'} ${meta.name || groupName}`;
+      headerBtn.innerHTML = `
+        <div class="accordion-header-left">
+          <span class="accordion-icon">${meta.icon || '📂'}</span>
+          <span class="accordion-title">${meta.name || groupName}</span>
+          <span class="accordion-count">${groupAlgos.length}</span>
+        </div>
+        <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      `;
+
+      headerBtn.addEventListener('click', () => {
+        const currentlyExpanded = this.expandedGroups.has(groupName);
+        if (currentlyExpanded) {
+          this.expandedGroups.delete(groupName);
+          groupEl.classList.remove('is-expanded');
+          groupEl.classList.add('is-collapsed');
+          headerBtn.setAttribute('aria-expanded', 'false');
+          headerBtn.title = `Nhấn để mở rộng ${meta.name || groupName}`;
+        } else {
+          this.expandedGroups.add(groupName);
+          groupEl.classList.remove('is-collapsed');
+          groupEl.classList.add('is-expanded');
+          headerBtn.setAttribute('aria-expanded', 'true');
+          headerBtn.title = `Nhấn để thu gọn ${meta.name || groupName}`;
+        }
+      });
+
+      groupEl.appendChild(headerBtn);
+
+      // Thân Accordion chứa danh sách thuật toán
+      const bodyEl = document.createElement('div');
+      bodyEl.className = 'sidebar-accordion-body';
 
       const listEl = document.createElement('ul');
       listEl.className = 'sidebar-algo-list';
@@ -479,13 +646,16 @@ export class UIController {
         btn.className = `algo-btn ${algo.id === state.currentAlgorithmId ? 'active' : ''}`;
         btn.dataset.id = algo.id;
 
+        const shortBadge = algo.shortComplexity || algo.complexity?.worst?.match(/O\([^)]+\)/)?.[0] || 'O(n)';
+
         btn.innerHTML = `
-          <span>${algo.name}</span>
-          <span class="algo-btn-badge">${algo.complexity.worst}</span>
+          <span class="algo-btn-title" title="${algo.name}">${algo.name}</span>
+          <span class="algo-btn-badge">${shortBadge}</span>
         `;
 
         btn.addEventListener('click', () => {
           this.clearFeedback();
+          this.practiceTaskIndex = 0;
           state.setAlgorithm(algo.id);
         });
 
@@ -493,15 +663,31 @@ export class UIController {
         listEl.appendChild(itemEl);
       });
 
-      groupEl.appendChild(listEl);
+      bodyEl.appendChild(listEl);
+      groupEl.appendChild(bodyEl);
       this.sidebarContainer.appendChild(groupEl);
     });
   }
 
   /**
-   * Cập nhật trạng thái active trên Sidebar
+   * Cập nhật trạng thái active trên Sidebar & tự động mở nhóm chứa thuật toán active
    */
   updateSidebarActive() {
+    const currAlgo = state.getCurrentAlgorithm();
+    if (currAlgo && currAlgo.group) {
+      // Tự động mở nhóm chứa thuật toán đang được chọn
+      if (!this.expandedGroups.has(currAlgo.group)) {
+        this.expandedGroups.add(currAlgo.group);
+        const groupEl = this.sidebarContainer?.querySelector(`[data-group="${currAlgo.group}"]`);
+        if (groupEl) {
+          groupEl.classList.remove('is-collapsed');
+          groupEl.classList.add('is-expanded');
+          const headerBtn = groupEl.querySelector('.sidebar-accordion-header');
+          headerBtn?.setAttribute('aria-expanded', 'true');
+        }
+      }
+    }
+
     const buttons = this.sidebarContainer?.querySelectorAll('.algo-btn');
     buttons?.forEach(btn => {
       if (btn.dataset.id === state.currentAlgorithmId) {
@@ -569,15 +755,14 @@ export class UIController {
       this.arraySizeLabel.textContent = state.arraySize;
     }
 
-    // Hiển thị hoặc ẩn cụm nút chuyển chế độ & nút restart
+    // Hiển thị cụm nút chuyển chế độ (Xếp tự do / Làm bài) trên toàn bộ các thuật toán & cấu trúc dữ liệu
     if (this.modeSwitchGroup) {
-      if (algo.isSearch) {
-        this.modeSwitchGroup.style.display = 'none';
-      } else {
-        this.modeSwitchGroup.style.display = 'inline-flex';
-        this.updateModeUI(state.interactionMode);
-      }
+      this.modeSwitchGroup.style.display = 'inline-flex';
+      this.updateModeUI(state.interactionMode);
     }
+
+    // Hiển thị thanh thao tác nhanh riêng biệt cho Cấu trúc Tuyến tính
+    this.renderLinearToolbar(algo);
 
     this.updateSidebarActive();
   }
@@ -819,5 +1004,2055 @@ export class UIController {
 
   closeVictoryModal() {
     this.victoryModalBackdrop?.classList.remove('active');
+  }
+
+  /**
+   * Render thanh thao tác riêng cho Cấu trúc Dữ liệu Tuyến tính (Stack, Queue, Linked List)
+   */
+  renderLinearToolbar(algo) {
+    if (!this.linearToolbarContainer) return;
+    if (!algo?.isLinear && !algo?.isTree) {
+      this.linearToolbarContainer.style.display = 'none';
+      return;
+    }
+
+    this.linearToolbarContainer.style.display = 'flex';
+    const type = algo.linearType || algo.treeType || algo.id;
+
+    if (type === 'stack') {
+      this.linearToolbarContainer.innerHTML = `
+        <span class="linear-toolbar-label">Thao tác Stack:</span>
+        <div class="linear-input-group">
+          <input id="linear-input-val" type="number" class="linear-input-num" value="${Math.floor(Math.random() * 80) + 10}" min="1" max="99" placeholder="Số">
+          <button id="btn-linear-push" class="btn btn-primary btn-sm">📥 Push(x)</button>
+        </div>
+        <button id="btn-linear-pop" class="btn btn-secondary btn-sm">📤 Pop()</button>
+        <button id="btn-linear-peek" class="btn btn-secondary btn-sm">👁 Peek()</button>
+        <button id="btn-linear-reset" class="btn btn-secondary btn-sm" style="margin-left: auto;">🔄 Chạy lại kịch bản</button>
+      `;
+
+      document.getElementById('btn-linear-push')?.addEventListener('click', () => this.handleStackPush());
+      document.getElementById('btn-linear-pop')?.addEventListener('click', () => this.handleStackPop());
+      document.getElementById('btn-linear-peek')?.addEventListener('click', () => this.handleStackPeek());
+      document.getElementById('btn-linear-reset')?.addEventListener('click', () => {
+        state.computeSteps();
+        state.notify('stepChange');
+      });
+    } else if (type === 'queue') {
+      this.linearToolbarContainer.innerHTML = `
+        <span class="linear-toolbar-label">Thao tác Queue:</span>
+        <div class="linear-input-group">
+          <input id="linear-input-val" type="number" class="linear-input-num" value="${Math.floor(Math.random() * 80) + 10}" min="1" max="99" placeholder="Số">
+          <button id="btn-linear-enqueue" class="btn btn-primary btn-sm">📥 Enqueue(x)</button>
+        </div>
+        <button id="btn-linear-dequeue" class="btn btn-secondary btn-sm">📤 Dequeue()</button>
+        <button id="btn-linear-front" class="btn btn-secondary btn-sm">👁 GetFront()</button>
+        <button id="btn-linear-reset" class="btn btn-secondary btn-sm" style="margin-left: auto;">🔄 Chạy lại kịch bản</button>
+      `;
+
+      document.getElementById('btn-linear-enqueue')?.addEventListener('click', () => this.handleQueueEnqueue());
+      document.getElementById('btn-linear-dequeue')?.addEventListener('click', () => this.handleQueueDequeue());
+      document.getElementById('btn-linear-front')?.addEventListener('click', () => this.handleQueueFront());
+      document.getElementById('btn-linear-reset')?.addEventListener('click', () => {
+        state.computeSteps();
+        state.notify('stepChange');
+      });
+    } else if (type === 'linkedList') {
+      this.linearToolbarContainer.innerHTML = `
+        <span class="linear-toolbar-label">Thao tác Singly Linked List:</span>
+        <div class="linear-input-group">
+          <input id="linear-input-val" type="number" class="linear-input-num" value="${Math.floor(Math.random() * 80) + 10}" min="1" max="99" placeholder="Giá trị">
+          <button id="btn-linear-insert-head" class="btn btn-primary btn-sm" title="Thêm node mới vào đầu danh sách (O(1))">➕ Thêm đầu</button>
+          <button id="btn-linear-insert-tail" class="btn btn-primary btn-sm" title="Thêm node mới vào cuối danh sách (O(n))">➕ Thêm đuôi</button>
+          <button id="btn-linear-search" class="btn btn-secondary btn-sm" title="Tìm kiếm tuần tự node có giá trị x (O(n))">🔍 Tìm(x)</button>
+        </div>
+        <button id="btn-linear-del-head" class="btn btn-secondary btn-sm" title="Xóa node ở đầu danh sách (O(1))">🗑️ Xóa đầu</button>
+        <button id="btn-linear-del-tail" class="btn btn-secondary btn-sm" title="Xóa node ở cuối danh sách (O(n))">🗑️ Xóa đuôi</button>
+        <button id="btn-linear-reverse" class="btn btn-secondary btn-sm" title="Đảo ngược liên kết toàn bộ danh sách (O(n))">🔄 Đảo ngược</button>
+        <button id="btn-linear-clear" class="btn btn-secondary btn-sm" title="Xóa rỗng toàn bộ danh sách">🧹 Xóa rỗng</button>
+        <button id="btn-linear-reset" class="btn btn-secondary btn-sm" style="margin-left: auto;" title="Chạy lại kịch bản mô phỏng mặc định">🔄 Chạy lại kịch bản</button>
+      `;
+
+      document.getElementById('btn-linear-insert-head')?.addEventListener('click', () => this.handleLLInsertHead());
+      document.getElementById('btn-linear-insert-tail')?.addEventListener('click', () => this.handleLLInsertTail());
+      document.getElementById('btn-linear-search')?.addEventListener('click', () => this.handleLLSearch());
+      document.getElementById('btn-linear-del-head')?.addEventListener('click', () => this.handleLLDeleteHead());
+      document.getElementById('btn-linear-del-tail')?.addEventListener('click', () => this.handleLLDeleteTail());
+      document.getElementById('btn-linear-reverse')?.addEventListener('click', () => this.handleLLReverse());
+      document.getElementById('btn-linear-clear')?.addEventListener('click', () => this.handleLLClear());
+      document.getElementById('btn-linear-reset')?.addEventListener('click', () => {
+        state.computeSteps();
+        state.notify('stepChange');
+      });
+    } else if (algo.isTree) {
+      if (algo.id === 'bst') {
+        this.linearToolbarContainer.innerHTML = `
+          <span class="linear-toolbar-label">Thao tác BST:</span>
+          <div class="linear-input-group">
+            <input id="tree-input-val" type="number" class="linear-input-num" value="${Math.floor(Math.random() * 80) + 10}" min="1" max="99" placeholder="Khóa x">
+            <button id="btn-tree-insert" class="btn btn-primary btn-sm" title="Chèn khóa x vào BST theo quy tắc < trái, > phải">➕ Chèn(x)</button>
+            <button id="btn-tree-search" class="btn btn-secondary btn-sm" title="Tìm kiếm khóa x trên cây BST O(h)">🔍 Tìm(x)</button>
+            <button id="btn-tree-delete" class="btn btn-secondary btn-sm" title="Xóa node có khóa x (Lá / 1 con / 2 con)">🗑️ Xóa(x)</button>
+          </div>
+          <div class="tree-traversal-group">
+            <button id="btn-tree-inorder" class="btn btn-secondary btn-sm" title="Duyệt Inorder (L-N-R) thu dãy số tăng dần">📖 Inorder</button>
+            <button id="btn-tree-preorder" class="btn btn-secondary btn-sm" title="Duyệt Preorder (N-L-R) Tiền thứ tự">🌿 Preorder</button>
+            <button id="btn-tree-postorder" class="btn btn-secondary btn-sm" title="Duyệt Postorder (L-R-N) Hậu thứ tự">🍂 Postorder</button>
+            <button id="btn-tree-levelorder" class="btn btn-secondary btn-sm" title="Duyệt Level-order (BFS) theo từng tầng">🌊 Level-order</button>
+          </div>
+          <div class="tree-minmax-group">
+            <button id="btn-tree-min" class="btn btn-outline btn-sm" title="Tìm giá trị nhỏ nhất Min ở nhánh con trái cùng">🔻 Min</button>
+            <button id="btn-tree-max" class="btn btn-outline btn-sm" title="Tìm giá trị lớn nhất Max ở nhánh con phải cùng">🔺 Max</button>
+          </div>
+          <button id="btn-tree-sample" class="btn btn-outline btn-sm" title="Nạp lại cây BST mẫu chuẩn">🌱 Cây mẫu</button>
+          <button id="btn-tree-random" class="btn btn-outline btn-sm" title="Tạo ngẫu nhiên một cây BST mới">🎲 Ngẫu nhiên</button>
+          <button id="btn-tree-clear" class="btn btn-secondary btn-sm" title="Xóa rỗng cây BST (Root = NULL)">🧹 Xóa rỗng</button>
+          <button id="btn-linear-reset" class="btn btn-secondary btn-sm" style="margin-left: auto;" title="Chạy kịch bản mô phỏng mặc định ban đầu">🔄 Kịch bản gốc</button>
+        `;
+
+        document.getElementById('btn-tree-insert')?.addEventListener('click', () => this.handleBSTInsert());
+        document.getElementById('btn-tree-search')?.addEventListener('click', () => this.handleBSTSearch());
+        document.getElementById('btn-tree-delete')?.addEventListener('click', () => this.handleBSTDelete());
+        document.getElementById('btn-tree-inorder')?.addEventListener('click', () => this.handleBSTInorder());
+        document.getElementById('btn-tree-preorder')?.addEventListener('click', () => this.handleBSTPreorder());
+        document.getElementById('btn-tree-postorder')?.addEventListener('click', () => this.handleBSTPostorder());
+        document.getElementById('btn-tree-levelorder')?.addEventListener('click', () => this.handleBSTLevelOrder());
+        document.getElementById('btn-tree-min')?.addEventListener('click', () => this.handleBSTFindMin());
+        document.getElementById('btn-tree-max')?.addEventListener('click', () => this.handleBSTFindMax());
+        document.getElementById('btn-tree-sample')?.addEventListener('click', () => this.handleBSTSample());
+        document.getElementById('btn-tree-random')?.addEventListener('click', () => this.handleBSTRandom());
+        document.getElementById('btn-tree-clear')?.addEventListener('click', () => this.handleBSTClear());
+        document.getElementById('btn-linear-reset')?.addEventListener('click', () => {
+          state.computeSteps();
+          state.notify('stepChange');
+          player.play();
+        });
+      } else if (algo.id === 'avlTree') {
+        this.linearToolbarContainer.innerHTML = `
+          <span class="linear-toolbar-label">Thao tác AVL:</span>
+          <div class="linear-input-group">
+            <input id="tree-input-val" type="number" class="linear-input-num" value="${Math.floor(Math.random() * 80) + 10}" min="1" max="99" placeholder="Khóa x">
+            <button id="btn-avl-insert" class="btn btn-primary btn-sm" title="Chèn khóa x và tự động xoay cân bằng nếu |BF| > 1">➕ Chèn(x)</button>
+            <button id="btn-avl-search" class="btn btn-secondary btn-sm" title="Tìm kiếm khóa x trên cây AVL O(log n)">🔍 Tìm(x)</button>
+          </div>
+          <div class="avl-rotation-presets">
+            <button id="btn-avl-case-ll" class="btn btn-outline btn-sm" title="Thử trường hợp Left-Left (LL) ➔ Tự xoay phải">⚡ Xoay LL</button>
+            <button id="btn-avl-case-rr" class="btn btn-outline btn-sm" title="Thử trường hợp Right-Right (RR) ➔ Tự xoay trái">⚡ Xoay RR</button>
+            <button id="btn-avl-case-lr" class="btn btn-outline btn-sm" title="Thử trường hợp Left-Right (LR) ➔ Tự xoay kép Trái-Phải">⚡ Xoay LR</button>
+            <button id="btn-avl-case-rl" class="btn btn-outline btn-sm" title="Thử trường hợp Right-Left (RL) ➔ Tự xoay kép Phải-Trái">⚡ Xoay RL</button>
+          </div>
+          <button id="btn-tree-clear" class="btn btn-secondary btn-sm" title="Xóa rỗng cây AVL">🧹 Xóa rỗng</button>
+          <button id="btn-linear-reset" class="btn btn-secondary btn-sm" style="margin-left: auto;">🔄 Chạy lại kịch bản</button>
+        `;
+
+        document.getElementById('btn-avl-insert')?.addEventListener('click', () => this.handleAVLInsert());
+        document.getElementById('btn-avl-search')?.addEventListener('click', () => this.handleAVLSearch());
+        document.getElementById('btn-avl-case-ll')?.addEventListener('click', () => this.handleAVLRotationPreset('ll'));
+        document.getElementById('btn-avl-case-rr')?.addEventListener('click', () => this.handleAVLRotationPreset('rr'));
+        document.getElementById('btn-avl-case-lr')?.addEventListener('click', () => this.handleAVLRotationPreset('lr'));
+        document.getElementById('btn-avl-case-rl')?.addEventListener('click', () => this.handleAVLRotationPreset('rl'));
+        document.getElementById('btn-tree-clear')?.addEventListener('click', () => this.handleAVLClear());
+        document.getElementById('btn-linear-reset')?.addEventListener('click', () => {
+          state.computeSteps();
+          state.notify('stepChange');
+        });
+      } else if (algo.id === 'heap') {
+        this.linearToolbarContainer.innerHTML = `
+          <span class="linear-toolbar-label">Thao tác Max-Heap:</span>
+          <div class="linear-input-group">
+            <input id="tree-input-val" type="number" class="linear-input-num" value="${Math.floor(Math.random() * 80) + 10}" min="1" max="99" placeholder="Số">
+            <button id="btn-heap-push" class="btn btn-primary btn-sm" title="Thêm phần tử vào cuối mảng và Sift-up nổi lên trên">📥 Thêm(x)</button>
+          </div>
+          <button id="btn-heap-extract" class="btn btn-secondary btn-sm" title="Rút phần tử lớn nhất ở đỉnh đống (Root) và Sift-down">⚡ Rút Max()</button>
+          <button id="btn-heap-sort-run" class="btn btn-secondary btn-sm" title="Chạy toàn bộ Heap Sort từng bước">🔄 Chạy Heap Sort</button>
+          <button id="btn-heap-sample" class="btn btn-outline btn-sm" title="Đổi mảng ngẫu nhiên và vun đống lại">🎲 Đổi mảng</button>
+          <button id="btn-linear-reset" class="btn btn-secondary btn-sm" style="margin-left: auto;">🔄 Chạy lại kịch bản</button>
+        `;
+
+        document.getElementById('btn-heap-push')?.addEventListener('click', () => this.handleHeapPush());
+        document.getElementById('btn-heap-extract')?.addEventListener('click', () => this.handleHeapExtractMax());
+        document.getElementById('btn-heap-sort-run')?.addEventListener('click', () => this.handleHeapSortRun());
+        document.getElementById('btn-heap-sample')?.addEventListener('click', () => this.handleHeapSample());
+        document.getElementById('btn-linear-reset')?.addEventListener('click', () => {
+          state.computeSteps();
+          state.notify('stepChange');
+        });
+      }
+    }
+  }
+
+  handleStackPush() {
+    player.pause();
+    const input = document.getElementById('linear-input-val');
+    const val = input ? parseInt(input.value, 10) || 50 : 50;
+
+    const currStep = state.getCurrentStep() || {};
+    const stack = currStep.stack ? [...currStep.stack] : [];
+
+    if (stack.length >= 8) {
+      this.showFeedback('⚠️ Ngăn xếp đã đầy (Stack Overflow, tối đa 8 phần tử)!', true);
+      return;
+    }
+
+    const newStack = [...stack, { value: val, id: `stack-${Date.now()}` }];
+    const newStep = {
+      linearType: 'stack',
+      stack: newStack,
+      top: newStack.length - 1,
+      capacity: 8,
+      activeAction: 'push_done',
+      activeItem: val,
+      message: `[Người dùng] Thực hiện push(${val}) thành công! Top = ${newStack.length - 1}.`,
+      codeLine: 5,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.checkPracticeProgress('push');
+    if (input) input.value = Math.floor(Math.random() * 80) + 10;
+  }
+
+  handleStackPop() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const stack = currStep.stack ? [...currStep.stack] : [];
+
+    if (stack.length === 0) {
+      this.showFeedback('⚠️ Ngăn xếp rỗng (Stack Underflow)! Không thể pop.', true);
+      return;
+    }
+
+    const poppedVal = stack[stack.length - 1].value;
+    const newStack = stack.slice(0, -1);
+    const newStep = {
+      linearType: 'stack',
+      stack: newStack,
+      top: newStack.length - 1,
+      capacity: 8,
+      activeAction: 'pop_done',
+      activeItem: poppedVal,
+      message: `[Người dùng] Thực hiện pop() thành công phần tử ${poppedVal}! Top = ${newStack.length - 1}.`,
+      codeLine: 8,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.checkPracticeProgress('pop');
+  }
+
+  handleStackPeek() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const stack = currStep.stack ? [...currStep.stack] : [];
+
+    if (stack.length === 0) {
+      this.showFeedback('⚠️ Ngăn xếp đang rỗng, không có phần tử ở đỉnh.', true);
+      return;
+    }
+
+    const topVal = stack[stack.length - 1].value;
+    const newStep = {
+      linearType: 'stack',
+      stack: [...stack],
+      top: stack.length - 1,
+      capacity: 8,
+      activeAction: 'peek',
+      activeItem: topVal,
+      message: `[Người dùng] Thao tác peek(): Phần tử tại đỉnh Top hiện tại là ${topVal}.`,
+      codeLine: 9,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.checkPracticeProgress('peek');
+  }
+
+  handleQueueEnqueue() {
+    player.pause();
+    const input = document.getElementById('linear-input-val');
+    const val = input ? parseInt(input.value, 10) || 50 : 50;
+
+    const currStep = state.getCurrentStep() || {};
+    const queue = currStep.queue ? [...currStep.queue] : [];
+
+    if (queue.length >= 8) {
+      this.showFeedback('⚠️ Hàng đợi đã đầy (Queue Overflow, tối đa 8 phần tử)!', true);
+      return;
+    }
+
+    const newQueue = [...queue, { value: val, id: `queue-${Date.now()}` }];
+    const newStep = {
+      linearType: 'queue',
+      queue: newQueue,
+      front: 0,
+      rear: newQueue.length - 1,
+      capacity: 8,
+      activeAction: 'enqueue_done',
+      activeItem: val,
+      message: `[Người dùng] Thực hiện enqueue(${val}) thành công! Đứng vào cuối hàng (Rear = ${newQueue.length - 1}).`,
+      codeLine: 5,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.checkPracticeProgress('enqueue');
+    if (input) input.value = Math.floor(Math.random() * 80) + 10;
+  }
+
+  handleQueueDequeue() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const queue = currStep.queue ? [...currStep.queue] : [];
+
+    if (queue.length === 0) {
+      this.showFeedback('⚠️ Hàng đợi rỗng (Queue Underflow)! Không thể dequeue.', true);
+      return;
+    }
+
+    const dequeuedVal = queue[0].value;
+    const newQueue = queue.slice(1);
+    const newStep = {
+      linearType: 'queue',
+      queue: newQueue,
+      front: 0,
+      rear: newQueue.length - 1,
+      capacity: 8,
+      activeAction: 'dequeue_done',
+      activeItem: dequeuedVal,
+      message: `[Người dùng] Thực hiện dequeue() thành công! Phần tử ${dequeuedVal} rời khỏi đầu hàng (Front).`,
+      codeLine: 8,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.checkPracticeProgress('dequeue');
+  }
+
+  handleQueueFront() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const queue = currStep.queue ? [...currStep.queue] : [];
+
+    if (queue.length === 0) {
+      this.showFeedback('⚠️ Hàng đợi rỗng, không có phần tử đầu hàng.', true);
+      return;
+    }
+
+    const frontVal = queue[0].value;
+    const newStep = {
+      linearType: 'queue',
+      queue: [...queue],
+      front: 0,
+      rear: queue.length - 1,
+      capacity: 8,
+      activeAction: 'peek',
+      activeItem: frontVal,
+      message: `[Người dùng] getFront(): Phần tử đang ở đầu hàng đợi hiện tại là ${frontVal}.`,
+      codeLine: 11,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.checkPracticeProgress('front');
+  }
+
+  handleLLInsertHead() {
+    player.pause();
+    const input = document.getElementById('linear-input-val');
+    const val = input ? parseInt(input.value, 10) || 50 : 50;
+
+    const currStep = state.getCurrentStep() || {};
+    const nodes = currStep.nodes ? currStep.nodes.map(n => ({ ...n })) : [];
+
+    if (nodes.length >= 7) {
+      this.showFeedback('⚠️ Danh sách đã đạt giới hạn hiển thị (7 Node)!', true);
+      return;
+    }
+
+    const newId = `node-${Date.now()}`;
+    const newHead = { id: newId, value: val, nextId: nodes[0]?.id || null };
+    nodes.unshift(newHead);
+
+    const newStep = {
+      linearType: 'linkedList',
+      nodes: nodes,
+      activeNodeId: newId,
+      pointers: { head: newId, tail: nodes[nodes.length - 1]?.id },
+      activeAction: 'insert_head',
+      message: `[Người dùng] insertHead(${val}): Tạo Node(${val}) mới và trỏ Head vào node này.`,
+      codeLine: 4,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã thêm Node(${val}) vào đầu danh sách (Head)!`);
+    this.checkPracticeProgress('insert_head');
+    if (input) input.value = Math.floor(Math.random() * 80) + 10;
+  }
+
+  handleLLInsertTail() {
+    player.pause();
+    const input = document.getElementById('linear-input-val');
+    const val = input ? parseInt(input.value, 10) || 50 : 50;
+
+    const currStep = state.getCurrentStep() || {};
+    const nodes = currStep.nodes ? currStep.nodes.map(n => ({ ...n })) : [];
+
+    if (nodes.length >= 7) {
+      this.showFeedback('⚠️ Danh sách đã đạt giới hạn hiển thị (7 Node)!', true);
+      return;
+    }
+
+    const newId = `node-${Date.now()}`;
+    const newTail = { id: newId, value: val, nextId: null };
+    if (nodes.length > 0) {
+      nodes[nodes.length - 1].nextId = newId;
+    }
+    nodes.push(newTail);
+
+    const newStep = {
+      linearType: 'linkedList',
+      nodes: nodes,
+      activeNodeId: newId,
+      pointers: { head: nodes[0]?.id, tail: newId },
+      activeAction: 'insert_tail',
+      message: `[Người dùng] insertTail(${val}): Thêm Node(${val}) vào đuôi danh sách liên kết.`,
+      codeLine: 8,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã thêm Node(${val}) vào đuôi danh sách (Tail)!`);
+    this.checkPracticeProgress('insert_tail');
+    if (input) input.value = Math.floor(Math.random() * 80) + 10;
+  }
+
+  handleLLReverse() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const nodes = currStep.nodes ? currStep.nodes.map(n => ({ ...n })) : [];
+
+    if (nodes.length <= 1) {
+      this.showFeedback('⚠️ Cần ít nhất 2 Node để thực hiện đảo ngược.', true);
+      return;
+    }
+
+    nodes.reverse();
+    for (let i = 0; i < nodes.length; i++) {
+      nodes[i].nextId = i < nodes.length - 1 ? nodes[i + 1].id : null;
+    }
+
+    const newStep = {
+      linearType: 'linkedList',
+      nodes: nodes,
+      activeNodeId: nodes[0]?.id,
+      pointers: { head: nodes[0]?.id, tail: nodes[nodes.length - 1]?.id },
+      activeAction: 'reverse_done',
+      message: `[Người dùng] Đã đảo ngược (Reverse) toàn bộ danh sách liên kết thành công! Head mới là Node(${nodes[0].value}).`,
+      codeLine: 14,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback('✓ Đã đảo ngược danh sách liên kết thành công!');
+    this.checkPracticeProgress('reverse');
+  }
+
+  handleLLSearch() {
+    player.pause();
+    const input = document.getElementById('linear-input-val');
+    const val = input ? parseInt(input.value, 10) || 50 : 50;
+
+    const currStep = state.getCurrentStep() || {};
+    const nodes = currStep.nodes ? currStep.nodes.map(n => ({ ...n })) : [];
+
+    if (nodes.length === 0) {
+      this.showFeedback('⚠️ Danh sách liên kết đang rỗng, không có phần tử để tìm kiếm.', true);
+      return;
+    }
+
+    const searchSteps = [];
+    let foundIndex = -1;
+
+    for (let i = 0; i < nodes.length; i++) {
+      const isMatch = nodes[i].value === val;
+      searchSteps.push({
+        linearType: 'linkedList',
+        nodes: nodes.map(n => ({ ...n })),
+        activeNodeId: nodes[i].id,
+        pointers: {
+          head: nodes[0].id,
+          tail: nodes[nodes.length - 1].id,
+          curr: nodes[i].id,
+          prev: i > 0 ? nodes[i - 1].id : null
+        },
+        activeAction: isMatch ? 'search_found' : 'search',
+        activeItem: val,
+        message: isMatch
+          ? `★ [Người dùng] ĐÃ TÌM THẤY Node(${nodes[i].value}) tại vị trí [${i}]! Chi phí tìm kiếm O(${i + 1}).`
+          : `[Tìm kiếm ${val}] Duyệt con trỏ curr đến Node(${nodes[i].value}) tại [${i}]. So sánh: ${nodes[i].value} !== ${val} ➔ bước tiếp curr = curr.next.`,
+        codeLine: 28,
+        isLinear: true
+      });
+
+      if (isMatch) {
+        foundIndex = i;
+        break;
+      }
+    }
+
+    if (foundIndex === -1) {
+      searchSteps.push({
+        linearType: 'linkedList',
+        nodes: nodes.map(n => ({ ...n })),
+        activeNodeId: null,
+        pointers: {
+          head: nodes[0].id,
+          tail: nodes[nodes.length - 1].id,
+          curr: null,
+          prev: nodes[nodes.length - 1].id
+        },
+        activeAction: 'search_miss',
+        activeItem: val,
+        message: `✕ [Người dùng] curr đã trỏ tới NULL: Không tìm thấy giá trị ${val} trong danh sách! Chi phí duyệt toàn bộ O(n).`,
+        codeLine: 28,
+        isLinear: true
+      });
+      this.showFeedback(`Không tìm thấy giá trị ${val} trong danh sách liên kết.`, true);
+    } else {
+      this.showFeedback(`✓ Đã tìm thấy Node(${val}) tại vị trí [${foundIndex}]!`);
+    }
+
+    this.executeInteractiveSteps(searchSteps, foundIndex !== -1 ? `✓ Đã tìm thấy Node(${val}) tại vị trí [${foundIndex}]!` : `Không tìm thấy giá trị ${val} trong danh sách liên kết.`);
+    if (foundIndex !== -1) soundFX.playFound();
+    this.checkPracticeProgress('search');
+  }
+
+  handleLLDeleteHead() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const nodes = currStep.nodes ? currStep.nodes.map(n => ({ ...n })) : [];
+
+    if (nodes.length === 0) {
+      this.showFeedback('⚠️ Danh sách liên kết đang rỗng (Head = NULL), không thể xóa!', true);
+      return;
+    }
+
+    const removedNode = nodes.shift();
+    const newStep = {
+      linearType: 'linkedList',
+      nodes: nodes,
+      activeNodeId: nodes[0]?.id || null,
+      pointers: {
+        head: nodes[0]?.id || null,
+        tail: nodes[nodes.length - 1]?.id || null
+      },
+      activeAction: 'delete_head',
+      activeItem: removedNode.value,
+      message: nodes.length > 0
+        ? `[Người dùng] Xóa Node đầu (${removedNode.value}): Dời Head = Head.next (Node ${nodes[0].value}), thu hồi bộ nhớ Node cũ. Chi phí O(1).`
+        : `[Người dùng] Xóa Node đầu (${removedNode.value}): Danh sách chỉ còn 1 node, giải phóng và đưa về Head = Tail = NULL.`,
+      codeLine: 4,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã xóa phần tử đầu Node(${removedNode.value}) thành công!`);
+  }
+
+  handleLLDeleteTail() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const nodes = currStep.nodes ? currStep.nodes.map(n => ({ ...n })) : [];
+
+    if (nodes.length === 0) {
+      this.showFeedback('⚠️ Danh sách liên kết đang rỗng (Tail = NULL), không thể xóa!', true);
+      return;
+    }
+
+    const removedNode = nodes.pop();
+    if (nodes.length > 0) {
+      nodes[nodes.length - 1].nextId = null;
+    }
+
+    const newStep = {
+      linearType: 'linkedList',
+      nodes: nodes,
+      activeNodeId: nodes[nodes.length - 1]?.id || null,
+      pointers: {
+        head: nodes[0]?.id || null,
+        tail: nodes[nodes.length - 1]?.id || null
+      },
+      activeAction: 'delete_tail',
+      activeItem: removedNode.value,
+      message: nodes.length > 0
+        ? `[Người dùng] Xóa Node đuôi (${removedNode.value}): Duyệt đến node áp chót (${nodes[nodes.length - 1].value}), gán next = NULL, cập nhật Tail. Chi phí O(n).`
+        : `[Người dùng] Xóa Node đuôi (${removedNode.value}): Danh sách trở về rỗng (Head = Tail = NULL).`,
+      codeLine: 8,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback(`✓ Đã xóa phần tử đuôi Node(${removedNode.value}) thành công!`);
+  }
+
+  handleLLClear() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const nodes = currStep.nodes || [];
+
+    if (nodes.length === 0) {
+      this.showFeedback('ℹ️ Danh sách liên kết đã rỗng sẵn.', false);
+      return;
+    }
+
+    const newStep = {
+      linearType: 'linkedList',
+      nodes: [],
+      activeNodeId: null,
+      pointers: { head: null, tail: null },
+      activeAction: 'clear',
+      message: `[Người dùng] Đã giải phóng bộ nhớ và xóa rỗng toàn bộ danh sách liên kết (Head = Tail = NULL).`,
+      codeLine: 1,
+      isLinear: true
+    };
+
+    state.steps.push(newStep);
+    state.currentStepIndex = state.steps.length - 1;
+    state.notify('stepChange');
+    this.showFeedback('🧹 Đã xóa rỗng danh sách liên kết thành công!');
+  }
+
+  // =========================================================================
+  // THAO TÁC TƯƠNG TÁC CÂY NHỊ PHÂN TÌM KIẾM (BST)
+  // =========================================================================
+
+  _cloneBST(node) {
+    if (!node) return null;
+    return {
+      id: node.id,
+      val: node.val,
+      left: this._cloneBST(node.left),
+      right: this._cloneBST(node.right)
+    };
+  }
+
+  /**
+   * Thực thi chuỗi các bước mô phỏng tương tác:
+   * Nạp steps mới, bắt đầu từ Bước 0 và tự động phát chuyển động mượt mà qua từng bước
+   */
+  executeInteractiveSteps(actionSteps, successMsg = '') {
+    if (!actionSteps || actionSteps.length === 0) return;
+    player.pause();
+    state.steps = actionSteps;
+    state.currentStepIndex = 0;
+    state.notify('stepChange');
+    if (successMsg) {
+      this.showFeedback(successMsg, false);
+    }
+    if (actionSteps.length > 1) {
+      player.play();
+    }
+  }
+
+  handleBSTInsert() {
+    player.pause();
+    const input = document.getElementById('tree-input-val');
+    const val = input ? parseInt(input.value, 10) : 45;
+    if (isNaN(val)) {
+      this.showFeedback('⚠️ Vui lòng nhập số nguyên hợp lệ để chèn.', true);
+      return;
+    }
+
+    const currStep = state.getCurrentStep() || {};
+    let root = this._cloneBST(currStep.root);
+    const newSteps = [];
+
+    if (!root) {
+      const newRoot = { id: `node-${Date.now()}`, val, left: null, right: null };
+      newSteps.push({
+        treeType: 'bst',
+        root: newRoot,
+        activeNodeId: newRoot.id,
+        activeAction: 'insert_done',
+        activeItem: val,
+        message: `[Chèn ${val}] Cây BST đang rỗng: Đã tạo Node(${val}) làm Root gốc của cây!`,
+        codeLine: 3,
+        isTree: true
+      });
+      this.executeInteractiveSteps(newSteps, `✓ Đã chèn Node(${val}) làm Root của cây BST!`);
+      this.checkPracticeProgress('insert');
+      if (input) input.value = Math.floor(Math.random() * 80) + 10;
+      return;
+    }
+
+    let curr = root;
+    let inserted = false;
+    let nodeCount = 100 + Math.floor(Math.random() * 900);
+
+    while (curr && !inserted) {
+      newSteps.push({
+        treeType: 'bst',
+        root: this._cloneBST(root),
+        activeNodeId: curr.id,
+        activeAction: 'compare',
+        activeItem: val,
+        message: `[Chèn ${val}] So sánh với Node(${curr.val}): Vì ${val} ${val < curr.val ? '<' : (val > curr.val ? '>' : '==')} ${curr.val} ➔ Rẽ sang ${val < curr.val ? 'TRÁI' : (val > curr.val ? 'PHẢI' : 'TRÙNG LẶP')}.`,
+        codeLine: val < curr.val ? 4 : 5,
+        isTree: true
+      });
+
+      if (val === curr.val) {
+        newSteps.push({
+          treeType: 'bst',
+          root: this._cloneBST(root),
+          activeNodeId: curr.id,
+          activeAction: 'compare',
+          activeItem: val,
+          message: `⚠️ Giá trị ${val} đã tồn tại trong BST tại Node(${curr.val})! Cây BST không chứa khóa trùng lặp.`,
+          codeLine: 1,
+          isTree: true
+        });
+        inserted = true;
+        break;
+      } else if (val < curr.val) {
+        if (!curr.left) {
+          curr.left = { id: `node-${Date.now()}-${nodeCount++}`, val, left: null, right: null };
+          newSteps.push({
+            treeType: 'bst',
+            root: this._cloneBST(root),
+            activeNodeId: curr.left.id,
+            activeAction: 'insert_done',
+            activeItem: val,
+            message: `✓ [Hoàn thành] Đã chèn thành công Node(${val}) vào cây con bên TRÁI của Node(${curr.val})!`,
+            codeLine: 3,
+            isTree: true
+          });
+          inserted = true;
+        } else {
+          curr = curr.left;
+        }
+      } else {
+        if (!curr.right) {
+          curr.right = { id: `node-${Date.now()}-${nodeCount++}`, val, left: null, right: null };
+          newSteps.push({
+            treeType: 'bst',
+            root: this._cloneBST(root),
+            activeNodeId: curr.right.id,
+            activeAction: 'insert_done',
+            activeItem: val,
+            message: `✓ [Hoàn thành] Đã chèn thành công Node(${val}) vào cây con bên PHẢI của Node(${curr.val})!`,
+            codeLine: 3,
+            isTree: true
+          });
+          inserted = true;
+        } else {
+          curr = curr.right;
+        }
+      }
+    }
+
+    this.executeInteractiveSteps(newSteps, `✓ Đã chèn Node(${val}) vào cây BST!`);
+    this.checkPracticeProgress('insert');
+    if (input) input.value = Math.floor(Math.random() * 80) + 10;
+  }
+
+  handleBSTSearch() {
+    player.pause();
+    const input = document.getElementById('tree-input-val');
+    const val = input ? parseInt(input.value, 10) : 45;
+    if (isNaN(val)) {
+      this.showFeedback('⚠️ Vui lòng nhập số nguyên hợp lệ để tìm kiếm.', true);
+      return;
+    }
+
+    const currStep = state.getCurrentStep() || {};
+    const root = this._cloneBST(currStep.root);
+
+    if (!root) {
+      this.showFeedback('⚠️ Cây BST rỗng, không có phần tử để tìm kiếm.', true);
+      return;
+    }
+
+    const searchSteps = [];
+    let curr = root;
+    let found = false;
+
+    while (curr) {
+      if (curr.val === val) {
+        searchSteps.push({
+          treeType: 'bst',
+          root: this._cloneBST(root),
+          activeNodeId: curr.id,
+          activeAction: 'search_found',
+          activeItem: val,
+          message: `★ [TÌM THẤY] Đã tìm thấy Node(${val}) trên BST! Chi phí tra cứu O(h).`,
+          codeLine: 8,
+          isTree: true
+        });
+        found = true;
+        break;
+      } else if (val < curr.val) {
+        searchSteps.push({
+          treeType: 'bst',
+          root: this._cloneBST(root),
+          activeNodeId: curr.id,
+          activeAction: 'search_left',
+          activeItem: val,
+          message: `[Tìm ${val}] So sánh với Node(${curr.val}): Vì ${val} < ${curr.val} ➔ Rẽ sang TRÁI.`,
+          codeLine: 9,
+          isTree: true
+        });
+        curr = curr.left;
+      } else {
+        searchSteps.push({
+          treeType: 'bst',
+          root: this._cloneBST(root),
+          activeNodeId: curr.id,
+          activeAction: 'search_right',
+          activeItem: val,
+          message: `[Tìm ${val}] So sánh với Node(${curr.val}): Vì ${val} > ${curr.val} ➔ Rẽ sang PHẢI.`,
+          codeLine: 10,
+          isTree: true
+        });
+        curr = curr.right;
+      }
+    }
+
+    if (!found) {
+      searchSteps.push({
+        treeType: 'bst',
+        root: this._cloneBST(root),
+        activeNodeId: null,
+        activeAction: 'search_failed',
+        activeItem: val,
+        message: `✕ [KHÔNG TÌM THẤY] Đi tới nhánh NULL: Giá trị ${val} KHÔNG tồn tại trong cây BST.`,
+        codeLine: 7,
+        isTree: true
+      });
+    }
+
+    this.executeInteractiveSteps(searchSteps, found ? `✓ Đã tìm thấy Node(${val}) trên BST!` : `✕ Không tìm thấy Node(${val}) trong cây BST.`);
+    if (found) soundFX.playFound();
+    this.checkPracticeProgress('search');
+  }
+
+  handleBSTDelete() {
+    player.pause();
+    const input = document.getElementById('tree-input-val');
+    const val = input ? parseInt(input.value, 10) : 45;
+    if (isNaN(val)) {
+      this.showFeedback('⚠️ Vui lòng nhập số nguyên hợp lệ để xóa.', true);
+      return;
+    }
+
+    const currStep = state.getCurrentStep() || {};
+    let root = this._cloneBST(currStep.root);
+
+    if (!root) {
+      this.showFeedback('⚠️ Cây BST rỗng, không có phần tử để xóa.', true);
+      return;
+    }
+
+    const delSteps = [];
+    let foundNode = false;
+
+    const deleteRec = (curr, target) => {
+      if (!curr) {
+        delSteps.push({
+          treeType: 'bst',
+          root: this._cloneBST(root),
+          activeNodeId: null,
+          activeAction: 'delete_not_found',
+          activeItem: target,
+          message: `✕ Không tìm thấy Node(${target}) trong BST để xóa.`,
+          codeLine: 7,
+          isTree: true
+        });
+        return null;
+      }
+
+      delSteps.push({
+        treeType: 'bst',
+        root: this._cloneBST(root),
+        activeNodeId: curr.id,
+        activeAction: 'compare',
+        activeItem: target,
+        message: `[Tìm kiếm node cần xóa] Xét Node(${curr.val}) với giá trị ${target}...`,
+        codeLine: 7,
+        isTree: true
+      });
+
+      if (target < curr.val) {
+        curr.left = deleteRec(curr.left, target);
+        return curr;
+      } else if (target > curr.val) {
+        curr.right = deleteRec(curr.right, target);
+        return curr;
+      } else {
+        foundNode = true;
+        // Trường hợp 1: Node lá (không có con)
+        if (!curr.left && !curr.right) {
+          delSteps.push({
+            treeType: 'bst',
+            root: this._cloneBST(root),
+            activeNodeId: curr.id,
+            activeAction: 'delete_leaf',
+            activeItem: target,
+            message: `[Trường hợp 1] Node(${curr.val}) là node lá: Ngắt liên kết và giải phóng trực tiếp.`,
+            codeLine: 8,
+            isTree: true
+          });
+          return null;
+        }
+
+        // Trường hợp 2: Node chỉ có con phải
+        if (!curr.left) {
+          delSteps.push({
+            treeType: 'bst',
+            root: this._cloneBST(root),
+            activeNodeId: curr.right.id,
+            activeAction: 'delete_one_child',
+            activeItem: target,
+            message: `[Trường hợp 2] Node(${curr.val}) chỉ có con phải: Đưa con phải Node(${curr.right.val}) lên thay thế.`,
+            codeLine: 8,
+            isTree: true
+          });
+          return curr.right;
+        }
+
+        // Trường hợp 2: Node chỉ có con trái
+        if (!curr.right) {
+          delSteps.push({
+            treeType: 'bst',
+            root: this._cloneBST(root),
+            activeNodeId: curr.left.id,
+            activeAction: 'delete_one_child',
+            activeItem: target,
+            message: `[Trường hợp 2] Node(${curr.val}) chỉ có con trái: Đưa con trái Node(${curr.left.val}) lên thay thế.`,
+            codeLine: 8,
+            isTree: true
+          });
+          return curr.left;
+        }
+
+        // Trường hợp 3: Node có cả 2 con
+        let succ = curr.right;
+        while (succ.left) {
+          succ = succ.left;
+        }
+
+        delSteps.push({
+          treeType: 'bst',
+          root: this._cloneBST(root),
+          activeNodeId: succ.id,
+          activeAction: 'delete_two_children',
+          activeItem: succ.val,
+          message: `[Trường hợp 3] Node(${curr.val}) có 2 con: Tìm Inorder Successor là Node(${succ.val}) (nhỏ nhất bên phải) làm thế thân.`,
+          codeLine: 9,
+          isTree: true
+        });
+
+        curr.val = succ.val;
+        curr.id = `node-${succ.val}-${Date.now()}`;
+        curr.right = deleteRec(curr.right, succ.val);
+        return curr;
+      }
+    };
+
+    root = deleteRec(root, val);
+
+    if (foundNode) {
+      delSteps.push({
+        treeType: 'bst',
+        root: this._cloneBST(root),
+        activeNodeId: null,
+        activeAction: 'delete_done',
+        activeItem: val,
+        message: `✓ Hoàn tất thao tác xóa Node(${val})! Bất biến BST: cây con trái < gốc < cây con phải luôn được duy trì.`,
+        codeLine: 8,
+        isTree: true
+      });
+      this.executeInteractiveSteps(delSteps, `✓ Đã xóa Node(${val}) khỏi BST!`);
+    } else {
+      this.executeInteractiveSteps(delSteps, `✕ Không tìm thấy Node(${val}) trong BST để xóa.`);
+    }
+  }
+
+  handleBSTInorder() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const root = this._cloneBST(currStep.root);
+
+    if (!root) {
+      this.showFeedback('⚠️ Cây BST rỗng, không có phần tử để duyệt.', true);
+      return;
+    }
+
+    const inorderSteps = [];
+    const list = [];
+
+    const traverse = (node) => {
+      if (!node) return;
+      traverse(node.left);
+      list.push(node.val);
+      inorderSteps.push({
+        treeType: 'bst',
+        root: this._cloneBST(root),
+        activeNodeId: node.id,
+        activeAction: 'inorder_visit',
+        activeItem: node.val,
+        traversalResult: [...list],
+        traversalType: 'Inorder (L-N-R)',
+        message: `Duyệt Inorder: Thăm Node(${node.val}). Dãy tăng dần hiện tại: [ ${list.join(', ')} ].`,
+        codeLine: 12,
+        isTree: true
+      });
+      traverse(node.right);
+    };
+
+    traverse(root);
+
+    inorderSteps.push({
+      treeType: 'bst',
+      root: this._cloneBST(root),
+      activeNodeId: null,
+      activeAction: 'complete',
+      traversalResult: [...list],
+      traversalType: 'Inorder (L-N-R)',
+      message: `✓ Hoàn thành duyệt Inorder (L-N-R)! Thu được toàn bộ dãy số sắp xếp tăng dần: [ ${list.join(', ')} ].`,
+      codeLine: 12,
+      isTree: true
+    });
+
+    this.executeInteractiveSteps(inorderSteps, `✓ Đã hoàn tất duyệt Inorder: [ ${list.join(', ')} ]`);
+    this.checkPracticeProgress('inorder');
+  }
+
+  handleBSTPreorder() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const root = this._cloneBST(currStep.root);
+
+    if (!root) {
+      this.showFeedback('⚠️ Cây BST rỗng, không có phần tử để duyệt.', true);
+      return;
+    }
+
+    const preSteps = [];
+    const list = [];
+
+    const traverse = (node) => {
+      if (!node) return;
+      list.push(node.val);
+      preSteps.push({
+        treeType: 'bst',
+        root: this._cloneBST(root),
+        activeNodeId: node.id,
+        activeAction: 'preorder_visit',
+        activeItem: node.val,
+        traversalResult: [...list],
+        traversalType: 'Preorder (N-L-R)',
+        message: `Duyệt Preorder: Thăm Gốc Node(${node.val}) trước, sau đó rẽ trái/phải. Dãy hiện tại: [ ${list.join(', ')} ].`,
+        codeLine: 11,
+        isTree: true
+      });
+      traverse(node.left);
+      traverse(node.right);
+    };
+
+    traverse(root);
+
+    preSteps.push({
+      treeType: 'bst',
+      root: this._cloneBST(root),
+      activeNodeId: null,
+      activeAction: 'complete',
+      traversalResult: [...list],
+      traversalType: 'Preorder (N-L-R)',
+      message: `✓ Hoàn thành duyệt Preorder (N-L-R: Gốc ➔ Trái ➔ Phải)! Dãy thu được: [ ${list.join(', ')} ].`,
+      codeLine: 11,
+      isTree: true
+    });
+
+    this.executeInteractiveSteps(preSteps, `✓ Đã hoàn tất duyệt Preorder: [ ${list.join(', ')} ]`);
+  }
+
+  handleBSTPostorder() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const root = this._cloneBST(currStep.root);
+
+    if (!root) {
+      this.showFeedback('⚠️ Cây BST rỗng, không có phần tử để duyệt.', true);
+      return;
+    }
+
+    const postSteps = [];
+    const list = [];
+
+    const traverse = (node) => {
+      if (!node) return;
+      traverse(node.left);
+      traverse(node.right);
+      list.push(node.val);
+      postSteps.push({
+        treeType: 'bst',
+        root: this._cloneBST(root),
+        activeNodeId: node.id,
+        activeAction: 'postorder_visit',
+        activeItem: node.val,
+        traversalResult: [...list],
+        traversalType: 'Postorder (L-R-N)',
+        message: `Duyệt Postorder: Duyệt xong 2 nhánh con rồi thăm Gốc Node(${node.val}). Dãy hiện tại: [ ${list.join(', ')} ].`,
+        codeLine: 12,
+        isTree: true
+      });
+    };
+
+    traverse(root);
+
+    postSteps.push({
+      treeType: 'bst',
+      root: this._cloneBST(root),
+      activeNodeId: null,
+      activeAction: 'complete',
+      traversalResult: [...list],
+      traversalType: 'Postorder (L-R-N)',
+      message: `✓ Hoàn thành duyệt Postorder (L-R-N: Trái ➔ Phải ➔ Gốc)! Dãy thu được: [ ${list.join(', ')} ].`,
+      codeLine: 12,
+      isTree: true
+    });
+
+    this.executeInteractiveSteps(postSteps, `✓ Đã hoàn tất duyệt Postorder: [ ${list.join(', ')} ]`);
+  }
+
+  handleBSTLevelOrder() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const root = this._cloneBST(currStep.root);
+
+    if (!root) {
+      this.showFeedback('⚠️ Cây BST rỗng, không có phần tử để duyệt.', true);
+      return;
+    }
+
+    const levelSteps = [];
+    const list = [];
+    const queue = [root];
+
+    while (queue.length > 0) {
+      const node = queue.shift();
+      list.push(node.val);
+      levelSteps.push({
+        treeType: 'bst',
+        root: this._cloneBST(root),
+        activeNodeId: node.id,
+        activeAction: 'level_visit',
+        activeItem: node.val,
+        traversalResult: [...list],
+        traversalType: 'Level-order (BFS)',
+        message: `Duyệt Level-order (BFS): Thăm Node(${node.val}) ở tầng hiện tại bằng Queue. Dãy: [ ${list.join(', ')} ].`,
+        codeLine: 12,
+        isTree: true
+      });
+
+      if (node.left) queue.push(node.left);
+      if (node.right) queue.push(node.right);
+    }
+
+    levelSteps.push({
+      treeType: 'bst',
+      root: this._cloneBST(root),
+      activeNodeId: null,
+      activeAction: 'complete',
+      traversalResult: [...list],
+      traversalType: 'Level-order (BFS)',
+      message: `✓ Hoàn thành duyệt Level-order (BFS: Từ trên xuống dưới, từ trái sang phải)! Dãy: [ ${list.join(', ')} ].`,
+      codeLine: 12,
+      isTree: true
+    });
+
+    this.executeInteractiveSteps(levelSteps, `✓ Đã hoàn tất duyệt Level-order: [ ${list.join(', ')} ]`);
+  }
+
+  handleBSTFindMin() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const root = this._cloneBST(currStep.root);
+
+    if (!root) {
+      this.showFeedback('⚠️ Cây BST rỗng, không có giá trị Min.', true);
+      return;
+    }
+
+    const minSteps = [];
+    let curr = root;
+
+    while (curr.left) {
+      minSteps.push({
+        treeType: 'bst',
+        root: this._cloneBST(root),
+        activeNodeId: curr.id,
+        activeAction: 'search_left',
+        activeItem: curr.val,
+        message: `Tìm Min: Xét Node(${curr.val}). Vì vẫn còn con trái ➔ Tiếp tục rẽ sang TRÁI để tìm khóa nhỏ hơn.`,
+        codeLine: 9,
+        isTree: true
+      });
+      curr = curr.left;
+    }
+
+    minSteps.push({
+      treeType: 'bst',
+      root: this._cloneBST(root),
+      activeNodeId: curr.id,
+      activeAction: 'search_found',
+      activeItem: curr.val,
+      message: `★ [TÌM THẤY MIN] Node(${curr.val}) là node ngoài cùng bên TRÁI (không còn con trái)! Giá trị nhỏ nhất Min = ${curr.val}.`,
+      codeLine: 8,
+      isTree: true
+    });
+
+    this.executeInteractiveSteps(minSteps, `★ Giá trị nhỏ nhất của cây là Min = ${curr.val}!`);
+    soundFX.playFound();
+  }
+
+  handleBSTFindMax() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const root = this._cloneBST(currStep.root);
+
+    if (!root) {
+      this.showFeedback('⚠️ Cây BST rỗng, không có giá trị Max.', true);
+      return;
+    }
+
+    const maxSteps = [];
+    let curr = root;
+
+    while (curr.right) {
+      maxSteps.push({
+        treeType: 'bst',
+        root: this._cloneBST(root),
+        activeNodeId: curr.id,
+        activeAction: 'search_right',
+        activeItem: curr.val,
+        message: `Tìm Max: Xét Node(${curr.val}). Vì vẫn còn con phải ➔ Tiếp tục rẽ sang PHẢI để tìm khóa lớn hơn.`,
+        codeLine: 10,
+        isTree: true
+      });
+      curr = curr.right;
+    }
+
+    maxSteps.push({
+      treeType: 'bst',
+      root: this._cloneBST(root),
+      activeNodeId: curr.id,
+      activeAction: 'search_found',
+      activeItem: curr.val,
+      message: `★ [TÌM THẤY MAX] Node(${curr.val}) là node ngoài cùng bên PHẢI (không còn con phải)! Giá trị lớn nhất Max = ${curr.val}.`,
+      codeLine: 8,
+      isTree: true
+    });
+
+    this.executeInteractiveSteps(maxSteps, `★ Giá trị lớn nhất của cây là Max = ${curr.val}!`);
+    soundFX.playFound();
+  }
+
+  handleBSTRandom() {
+    player.pause();
+    const nums = [];
+    while (nums.length < 6) {
+      const r = Math.floor(Math.random() * 85) + 12;
+      if (!nums.includes(r)) nums.push(r);
+    }
+
+    let root = null;
+    const randomSteps = [];
+    let nodeCount = 0;
+
+    randomSteps.push({
+      treeType: 'bst',
+      root: null,
+      activeNodeId: null,
+      activeAction: 'init',
+      message: `🎲 Khởi tạo cây BST ngẫu nhiên với tập khóa [ ${nums.join(', ')} ]...`,
+      codeLine: 1,
+      isTree: true
+    });
+
+    const insertHelper = (curr, val) => {
+      if (!curr) {
+        nodeCount++;
+        return { id: `rand-node-${nodeCount}`, val, left: null, right: null };
+      }
+      if (val < curr.val) curr.left = insertHelper(curr.left, val);
+      else if (val > curr.val) curr.right = insertHelper(curr.right, val);
+      return curr;
+    };
+
+    nums.forEach(val => {
+      root = insertHelper(root, val);
+      randomSteps.push({
+        treeType: 'bst',
+        root: this._cloneBST(root),
+        activeNodeId: `rand-node-${nodeCount}`,
+        activeAction: 'insert_done',
+        activeItem: val,
+        message: `Đã chèn Node(${val}) vào cây BST.`,
+        codeLine: 3,
+        isTree: true
+      });
+    });
+
+    this.executeInteractiveSteps(randomSteps, `🎲 Đã tạo cây BST ngẫu nhiên mới: [ ${nums.join(', ')} ]!`);
+  }
+
+  handleBSTSample() {
+    player.pause();
+    state.computeSteps();
+    state.notify('stepChange');
+    player.play();
+    this.showFeedback('🌱 Đã nạp lại Cây BST chuẩn mẫu thành công!', false);
+  }
+
+  handleBSTClear() {
+    player.pause();
+    state.steps = [{
+      treeType: 'bst',
+      root: null,
+      activeNodeId: null,
+      activeAction: 'init',
+      message: '🧹 [Người dùng] Đã xóa rỗng cây BST: Root = NULL. Bạn có thể tự do gõ số và bấm Chèn(x)!',
+      codeLine: 1,
+      isTree: true
+    }];
+    state.currentStepIndex = 0;
+    state.notify('stepChange');
+    this.showFeedback('🧹 Đã xóa rỗng cây BST.', false);
+  }
+
+  // =========================================================================
+  // THAO TÁC TƯƠNG TÁC CÂY AVL (TỰ CÂN BẰNG)
+  // =========================================================================
+
+  _cloneAVL(node) {
+    if (!node) return null;
+    return {
+      id: node.id,
+      val: node.val,
+      height: node.height,
+      bf: node.bf,
+      left: this._cloneAVL(node.left),
+      right: this._cloneAVL(node.right)
+    };
+  }
+
+  _heightAVL(node) {
+    return node ? node.height : 0;
+  }
+
+  _getBFAVL(node) {
+    return node ? this._heightAVL(node.left) - this._heightAVL(node.right) : 0;
+  }
+
+  _updateNodeAVL(node) {
+    if (!node) return;
+    node.height = 1 + Math.max(this._heightAVL(node.left), this._heightAVL(node.right));
+    node.bf = this._getBFAVL(node);
+  }
+
+  _rotateRightAVL(y) {
+    const x = y.left;
+    const T2 = x.right;
+    x.right = y;
+    y.left = T2;
+    this._updateNodeAVL(y);
+    this._updateNodeAVL(x);
+    return x;
+  }
+
+  _rotateLeftAVL(x) {
+    const y = x.right;
+    const T2 = y.left;
+    y.left = x;
+    x.right = T2;
+    this._updateNodeAVL(x);
+    this._updateNodeAVL(y);
+    return y;
+  }
+
+  handleAVLInsert() {
+    player.pause();
+    const input = document.getElementById('tree-input-val');
+    const val = input ? parseInt(input.value, 10) || 25 : 25;
+
+    const currStep = state.getCurrentStep() || {};
+    let root = this._cloneAVL(currStep.root);
+    const avlSteps = [];
+
+    const insertAVLRec = (node, key) => {
+      if (!node) {
+        return {
+          id: `avl-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          val: key,
+          height: 1,
+          bf: 0,
+          left: null,
+          right: null
+        };
+      }
+
+      avlSteps.push({
+        treeType: 'avl',
+        root: this._cloneAVL(root),
+        activeNodeId: node.id,
+        activeAction: 'compare',
+        activeItem: key,
+        message: `Chèn ${key}: So sánh với Node(${node.val}, BF=${node.bf}). Rẽ sang ${key < node.val ? 'TRÁI' : 'PHẢI'}.`,
+        codeLine: 1,
+        isTree: true
+      });
+
+      if (key < node.val) {
+        node.left = insertAVLRec(node.left, key);
+      } else if (key > node.val) {
+        node.right = insertAVLRec(node.right, key);
+      } else {
+        return node;
+      }
+
+      this._updateNodeAVL(node);
+      const balance = node.bf;
+
+      if (balance > 1 && key < node.left.val) {
+        avlSteps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(root),
+          activeNodeId: node.id,
+          activeAction: 'unbalanced_ll',
+          activeItem: node.val,
+          message: `⚠️ Phát hiện mất cân bằng Left-Left (LL) tại Node(${node.val}, BF=${balance})! Cần thực hiện phép Xoay Phải (Right Rotation).`,
+          codeLine: 4,
+          isTree: true
+        });
+        const rotated = this._rotateRightAVL(node);
+        avlSteps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(root ? (node === root ? rotated : root) : rotated),
+          activeNodeId: rotated.id,
+          activeAction: 'rotate_done',
+          activeItem: rotated.val,
+          message: `✓ Đã xoay phải tại Node(${node.val})! Node(${rotated.val}) lên làm gốc mới với BF=${rotated.bf}.`,
+          codeLine: 5,
+          isTree: true
+        });
+        return rotated;
+      }
+
+      if (balance < -1 && key > node.right.val) {
+        avlSteps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(root),
+          activeNodeId: node.id,
+          activeAction: 'unbalanced_rr',
+          activeItem: node.val,
+          message: `⚠️ Phát hiện mất cân bằng Right-Right (RR) tại Node(${node.val}, BF=${balance})! Cần thực hiện phép Xoay Trái (Left Rotation).`,
+          codeLine: 6,
+          isTree: true
+        });
+        const rotated = this._rotateLeftAVL(node);
+        avlSteps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(root ? (node === root ? rotated : root) : rotated),
+          activeNodeId: rotated.id,
+          activeAction: 'rotate_done',
+          activeItem: rotated.val,
+          message: `✓ Đã xoay trái tại Node(${node.val})! Node(${rotated.val}) lên làm gốc mới với BF=${rotated.bf}.`,
+          codeLine: 7,
+          isTree: true
+        });
+        return rotated;
+      }
+
+      if (balance > 1 && key > node.left.val) {
+        avlSteps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(root),
+          activeNodeId: node.id,
+          activeAction: 'unbalanced_lr',
+          activeItem: node.val,
+          message: `⚠️ Phát hiện mất cân bằng Left-Right (LR) tại Node(${node.val}, BF=${balance})! Cần Xoay Trái con trái rồi Xoay Phải node hiện tại.`,
+          codeLine: 8,
+          isTree: true
+        });
+        node.left = this._rotateLeftAVL(node.left);
+        const rotated = this._rotateRightAVL(node);
+        avlSteps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(root ? (node === root ? rotated : root) : rotated),
+          activeNodeId: rotated.id,
+          activeAction: 'rotate_done',
+          activeItem: rotated.val,
+          message: `✓ Đã hoàn thành phép xoay kép LR! Node(${rotated.val}) lên làm gốc mới với BF=${rotated.bf}.`,
+          codeLine: 9,
+          isTree: true
+        });
+        return rotated;
+      }
+
+      if (balance < -1 && key < node.right.val) {
+        avlSteps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(root),
+          activeNodeId: node.id,
+          activeAction: 'unbalanced_rl',
+          activeItem: node.val,
+          message: `⚠️ Phát hiện mất cân bằng Right-Left (RL) tại Node(${node.val}, BF=${balance})! Cần Xoay Phải con phải rồi Xoay Trái node hiện tại.`,
+          codeLine: 10,
+          isTree: true
+        });
+        node.right = this._rotateRightAVL(node.right);
+        const rotated = this._rotateLeftAVL(node);
+        avlSteps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(root ? (node === root ? rotated : root) : rotated),
+          activeNodeId: rotated.id,
+          activeAction: 'rotate_done',
+          activeItem: rotated.val,
+          message: `✓ Đã hoàn thành phép xoay kép RL! Node(${rotated.val}) lên làm gốc mới với BF=${rotated.bf}.`,
+          codeLine: 11,
+          isTree: true
+        });
+        return rotated;
+      }
+
+      return node;
+    };
+
+    root = insertAVLRec(root, val);
+
+    avlSteps.push({
+      treeType: 'avl',
+      root: this._cloneAVL(root),
+      activeNodeId: null,
+      activeAction: 'insert_done',
+      activeItem: val,
+      message: `✓ [Người dùng] Đã chèn Node(${val}) vào cây AVL thành công! Chiều cao luôn được duy trì tối ưu O(log n).`,
+      codeLine: 2,
+      isTree: true
+    });
+
+    this.executeInteractiveSteps(avlSteps, `✓ Đã chèn Node(${val}) vào cây AVL thành công!`);
+    this.checkPracticeProgress('insert');
+    if (input) input.value = Math.floor(Math.random() * 80) + 10;
+  }
+
+  handleAVLSearch() {
+    player.pause();
+    const input = document.getElementById('tree-input-val');
+    const val = input ? parseInt(input.value, 10) || 25 : 25;
+
+    const currStep = state.getCurrentStep() || {};
+    const root = this._cloneAVL(currStep.root);
+
+    if (!root) {
+      this.showFeedback('⚠️ Cây AVL rỗng, không có phần tử để tìm kiếm.', true);
+      return;
+    }
+
+    const searchSteps = [];
+    let curr = root;
+    let found = false;
+
+    while (curr) {
+      if (curr.val === val) {
+        searchSteps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(root),
+          activeNodeId: curr.id,
+          activeAction: 'search_found',
+          activeItem: val,
+          message: `★ [Người dùng] ĐÃ TÌM THẤY Node(${val}) trên Cây AVL! Đảm bảo thời gian tra cứu O(log n).`,
+          codeLine: 1,
+          isTree: true
+        });
+        found = true;
+        break;
+      } else if (val < curr.val) {
+        searchSteps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(root),
+          activeNodeId: curr.id,
+          activeAction: 'search_left',
+          activeItem: val,
+          message: `Tìm ${val}: So sánh với Node(${curr.val}). Vì ${val} < ${curr.val} ➔ rẽ sang TRÁI.`,
+          codeLine: 1,
+          isTree: true
+        });
+        curr = curr.left;
+      } else {
+        searchSteps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(root),
+          activeNodeId: curr.id,
+          activeAction: 'search_right',
+          activeItem: val,
+          message: `Tìm ${val}: So sánh với Node(${curr.val}). Vì ${val} > ${curr.val} ➔ rẽ sang PHẢI.`,
+          codeLine: 1,
+          isTree: true
+        });
+        curr = curr.right;
+      }
+    }
+
+    if (!found) {
+      searchSteps.push({
+        treeType: 'avl',
+        root: this._cloneAVL(root),
+        activeNodeId: null,
+        activeAction: 'search_failed',
+        activeItem: val,
+        message: `✕ [Người dùng] Không tìm thấy giá trị ${val} trong cây AVL.`,
+        codeLine: 1,
+        isTree: true
+      });
+    }
+
+    this.executeInteractiveSteps(searchSteps, found ? `✓ Đã tìm thấy Node(${val}) trên Cây AVL!` : `✕ Không tìm thấy Node(${val}) trong cây AVL.`);
+    if (found) soundFX.playFound();
+    this.checkPracticeProgress('search');
+  }
+
+  handleAVLRotationPreset(type) {
+    player.pause();
+    let sequence = [];
+    let desc = '';
+    if (type === 'll') {
+      sequence = [30, 20, 10];
+      desc = 'Kịch bản Left-Left (LL): Chèn [30, 20, 10] khiến Node(30) có BF = +2 ➔ Tự kích hoạt Xoay Phải (Right Rotation).';
+    } else if (type === 'rr') {
+      sequence = [10, 20, 30];
+      desc = 'Kịch bản Right-Right (RR): Chèn [10, 20, 30] khiến Node(10) có BF = -2 ➔ Tự kích hoạt Xoay Trái (Left Rotation).';
+    } else if (type === 'lr') {
+      sequence = [30, 10, 20];
+      desc = 'Kịch bản Left-Right (LR): Chèn [30, 10, 20] khiến Node(30) có BF = +2 và con trái lệch phải ➔ Xoay kép Trái-Phải.';
+    } else if (type === 'rl') {
+      sequence = [10, 30, 20];
+      desc = 'Kịch bản Right-Left (RL): Chèn [10, 30, 20] khiến Node(10) có BF = -2 và con phải lệch trái ➔ Xoay kép Phải-Trái.';
+    }
+
+    const steps = [];
+    let root = null;
+
+    steps.push({
+      treeType: 'avl',
+      root: null,
+      activeNodeId: null,
+      activeAction: 'init',
+      message: `Bắt đầu mô phỏng ${desc}`,
+      codeLine: 1,
+      isTree: true
+    });
+
+    const insertHelper = (node, key) => {
+      if (!node) {
+        return {
+          id: `avl-preset-${key}`,
+          val: key,
+          height: 1,
+          bf: 0,
+          left: null,
+          right: null
+        };
+      }
+      if (key < node.val) node.left = insertHelper(node.left, key);
+      else if (key > node.val) node.right = insertHelper(node.right, key);
+
+      this._updateNodeAVL(node);
+      const balance = node.bf;
+
+      if (balance > 1 && key < node.left.val) {
+        steps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(root),
+          activeNodeId: node.id,
+          activeAction: 'unbalanced_ll',
+          activeItem: node.val,
+          message: `⚠️ Mất cân bằng LL tại Node(${node.val}, BF=${balance})! Chuẩn bị xoay phải.`,
+          codeLine: 4,
+          isTree: true
+        });
+        const rot = this._rotateRightAVL(node);
+        steps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(node === root ? rot : root),
+          activeNodeId: rot.id,
+          activeAction: 'rotate_done',
+          activeItem: rot.val,
+          message: `✓ Đã xoay phải thành công! Node(${rot.val}) trở thành gốc với BF=${rot.bf}.`,
+          codeLine: 5,
+          isTree: true
+        });
+        return rot;
+      }
+      if (balance < -1 && key > node.right.val) {
+        steps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(root),
+          activeNodeId: node.id,
+          activeAction: 'unbalanced_rr',
+          activeItem: node.val,
+          message: `⚠️ Mất cân bằng RR tại Node(${node.val}, BF=${balance})! Chuẩn bị xoay trái.`,
+          codeLine: 6,
+          isTree: true
+        });
+        const rot = this._rotateLeftAVL(node);
+        steps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(node === root ? rot : root),
+          activeNodeId: rot.id,
+          activeAction: 'rotate_done',
+          activeItem: rot.val,
+          message: `✓ Đã xoay trái thành công! Node(${rot.val}) trở thành gốc với BF=${rot.bf}.`,
+          codeLine: 7,
+          isTree: true
+        });
+        return rot;
+      }
+      if (balance > 1 && key > node.left.val) {
+        steps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(root),
+          activeNodeId: node.id,
+          activeAction: 'unbalanced_lr',
+          activeItem: node.val,
+          message: `⚠️ Mất cân bằng LR tại Node(${node.val}, BF=${balance})! Chuẩn bị xoay kép LR.`,
+          codeLine: 8,
+          isTree: true
+        });
+        node.left = this._rotateLeftAVL(node.left);
+        const rot = this._rotateRightAVL(node);
+        steps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(node === root ? rot : root),
+          activeNodeId: rot.id,
+          activeAction: 'rotate_done',
+          activeItem: rot.val,
+          message: `✓ Đã xoay kép LR thành công! Node(${rot.val}) trở thành gốc với BF=${rot.bf}.`,
+          codeLine: 9,
+          isTree: true
+        });
+        return rot;
+      }
+      if (balance < -1 && key < node.right.val) {
+        steps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(root),
+          activeNodeId: node.id,
+          activeAction: 'unbalanced_rl',
+          activeItem: node.val,
+          message: `⚠️ Mất cân bằng RL tại Node(${node.val}, BF=${balance})! Chuẩn bị xoay kép RL.`,
+          codeLine: 10,
+          isTree: true
+        });
+        node.right = this._rotateRightAVL(node.right);
+        const rot = this._rotateLeftAVL(node);
+        steps.push({
+          treeType: 'avl',
+          root: this._cloneAVL(node === root ? rot : root),
+          activeNodeId: rot.id,
+          activeAction: 'rotate_done',
+          activeItem: rot.val,
+          message: `✓ Đã xoay kép RL thành công! Node(${rot.val}) trở thành gốc với BF=${rot.bf}.`,
+          codeLine: 11,
+          isTree: true
+        });
+        return rot;
+      }
+
+      return node;
+    };
+
+    sequence.forEach(x => {
+      root = insertHelper(root, x);
+      steps.push({
+        treeType: 'avl',
+        root: this._cloneAVL(root),
+        activeNodeId: `avl-preset-${x}`,
+        activeAction: 'insert_done',
+        activeItem: x,
+        message: `Đã chèn Node(${x}) vào cây AVL.`,
+        codeLine: 2,
+        isTree: true
+      });
+    });
+
+    this.executeInteractiveSteps(steps, `⚡ Đã kích hoạt mô phỏng ${type.toUpperCase()}`);
+    this.checkPracticeProgress('rotate');
+  }
+
+  handleAVLClear() {
+    player.pause();
+    state.steps = [{
+      treeType: 'avl',
+      root: null,
+      activeNodeId: null,
+      activeAction: 'init',
+      message: '🧹 [Người dùng] Đã xóa rỗng cây AVL: Root = NULL. Hãy nhập số và bấm Chèn(x) để xem cây tự xoay cân bằng!',
+      codeLine: 1,
+      isTree: true
+    }];
+    state.currentStepIndex = 0;
+    state.notify('stepChange');
+    this.showFeedback('🧹 Đã xóa rỗng cây AVL.', false);
+  }
+
+  // =========================================================================
+  // THAO TÁC TƯƠNG TÁC BINARY HEAP & HEAP SORT
+  // =========================================================================
+
+  _arrayToHeapTree(arrayData, heapLimit) {
+    const limit = typeof heapLimit === 'number' ? heapLimit : arrayData.length;
+    const buildSubtree = (i) => {
+      if (i >= limit || !arrayData[i]) return null;
+      return {
+        id: arrayData[i].id,
+        val: arrayData[i].value,
+        index: i,
+        left: buildSubtree(2 * i + 1),
+        right: buildSubtree(2 * i + 2)
+      };
+    };
+    return buildSubtree(0);
+  }
+
+  handleHeapPush() {
+    player.pause();
+    const input = document.getElementById('tree-input-val');
+    const val = input ? parseInt(input.value, 10) || 85 : 85;
+
+    const currStep = state.getCurrentStep() || {};
+    const heapArr = currStep.array ? currStep.array.map(x => ({ ...x })) : [];
+
+    if (heapArr.length >= 12) {
+      this.showFeedback('⚠️ Max-Heap đã đạt giới hạn trực quan (12 phần tử)!', true);
+      return;
+    }
+
+    const newId = `h-${Date.now()}`;
+    heapArr.push({ id: newId, value: val });
+    const heapSteps = [];
+    const n = heapArr.length;
+
+    heapSteps.push({
+      treeType: 'heap',
+      root: this._arrayToHeapTree(heapArr, n),
+      array: heapArr.map(x => ({ ...x })),
+      heapSize: n,
+      activeAction: 'push_leaf',
+      highlights: { [n - 1]: 'cmp' },
+      message: `[Người dùng] Thêm phần tử ${val} vào cuối mảng (Lá mới tại index [${n - 1}]). Chuẩn bị Sift-up lên trên...`,
+      codeLine: 1,
+      isTree: true
+    });
+
+    let i = n - 1;
+    while (i > 0) {
+      const parentIdx = Math.floor((i - 1) / 2);
+      heapSteps.push({
+        treeType: 'heap',
+        root: this._arrayToHeapTree(heapArr, n),
+        array: heapArr.map(x => ({ ...x })),
+        heapSize: n,
+        activeAction: 'sift_up_check',
+        highlights: { [i]: 'cmp', [parentIdx]: 'cmp' },
+        message: `Sift-up: So sánh phần tử con ${val} tại [${i}] với cha ${heapArr[parentIdx].value} tại [${parentIdx}].`,
+        codeLine: 2,
+        isTree: true
+      });
+
+      if (heapArr[i].value > heapArr[parentIdx].value) {
+        const temp = heapArr[i];
+        heapArr[i] = heapArr[parentIdx];
+        heapArr[parentIdx] = temp;
+
+        heapSteps.push({
+          treeType: 'heap',
+          root: this._arrayToHeapTree(heapArr, n),
+          array: heapArr.map(x => ({ ...x })),
+          heapSize: n,
+          activeAction: 'sift_up_swap',
+          highlights: { [parentIdx]: 'swap' },
+          message: `Vì ${val} > ${heapArr[i].value}, hoán đổi đưa ${val} lên cha tại index [${parentIdx}].`,
+          codeLine: 4,
+          isTree: true
+        });
+
+        i = parentIdx;
+      } else {
+        break;
+      }
+    }
+
+    heapSteps.push({
+      treeType: 'heap',
+      root: this._arrayToHeapTree(heapArr, n),
+      array: heapArr.map(x => ({ ...x })),
+      heapSize: n,
+      activeAction: 'push_done',
+      highlights: { [i]: 'sorted' },
+      message: `✓ Hoàn thành Sift-up! Max-Heap đã đạt trạng thái cân bằng hoàn hảo (A[cha] >= A[con]).`,
+      codeLine: 5,
+      isTree: true
+    });
+
+    this.executeInteractiveSteps(heapSteps, `✓ Đã thêm phần tử ${val} và Sift-up lên vị trí cân bằng của Max-Heap!`);
+    this.checkPracticeProgress('push');
+    if (input) input.value = Math.floor(Math.random() * 80) + 10;
+  }
+
+  handleHeapExtractMax() {
+    player.pause();
+    const currStep = state.getCurrentStep() || {};
+    const heapArr = currStep.array ? currStep.array.map(x => ({ ...x })) : [];
+
+    if (heapArr.length === 0) {
+      this.showFeedback('⚠️ Max-Heap rỗng, không thể rút phần tử.', true);
+      return;
+    }
+
+    const extractSteps = [];
+    const maxVal = heapArr[0].value;
+
+    extractSteps.push({
+      treeType: 'heap',
+      root: this._arrayToHeapTree(heapArr, heapArr.length),
+      array: heapArr.map(x => ({ ...x })),
+      heapSize: heapArr.length,
+      activeAction: 'extract_max',
+      highlights: { 0: 'sorted' },
+      message: `[Người dùng] Rút phần tử lớn nhất Max = ${maxVal} ở đỉnh Root [0]!`,
+      codeLine: 5,
+      isTree: true
+    });
+
+    if (heapArr.length === 1) {
+      heapArr.pop();
+      extractSteps.push({
+        treeType: 'heap',
+        root: null,
+        array: [],
+        heapSize: 0,
+        activeAction: 'complete',
+        message: 'Max-Heap trở về trạng thái rỗng.',
+        codeLine: 5,
+        isTree: true
+      });
+      this.executeInteractiveSteps(extractSteps, `✓ Đã rút phần tử Max = ${maxVal}! Heap trở về rỗng.`);
+      this.checkPracticeProgress('extract');
+      return;
+    }
+
+    const lastItem = heapArr.pop();
+    heapArr[0] = lastItem;
+    const n = heapArr.length;
+
+    extractSteps.push({
+      treeType: 'heap',
+      root: this._arrayToHeapTree(heapArr, n),
+      array: heapArr.map(x => ({ ...x })),
+      heapSize: n,
+      activeAction: 'replace_root',
+      highlights: { 0: 'swap' },
+      message: `Đưa phần tử cuối cùng (${lastItem.value}) lên đỉnh Root [0]. Bắt đầu Heapify-down (Sift-down)...`,
+      codeLine: 6,
+      isTree: true
+    });
+
+    let i = 0;
+    while (true) {
+      let largest = i;
+      const left = 2 * i + 1;
+      const right = 2 * i + 2;
+
+      if (left < n && heapArr[left].value > heapArr[largest].value) largest = left;
+      if (right < n && heapArr[right].value > heapArr[largest].value) largest = right;
+
+      if (largest !== i) {
+        extractSteps.push({
+          treeType: 'heap',
+          root: this._arrayToHeapTree(heapArr, n),
+          array: heapArr.map(x => ({ ...x })),
+          heapSize: n,
+          activeAction: 'heapify_down_cmp',
+          highlights: { [i]: 'cmp', [largest]: 'cmp' },
+          message: `Sift-down: Node cha (${heapArr[i].value}) nhỏ hơn con lớn nhất (${heapArr[largest].value} tại [${largest}]). Hoán đổi!`,
+          codeLine: 3,
+          isTree: true
+        });
+
+        const temp = heapArr[i];
+        heapArr[i] = heapArr[largest];
+        heapArr[largest] = temp;
+        i = largest;
+      } else {
+        break;
+      }
+    }
+
+    extractSteps.push({
+      treeType: 'heap',
+      root: this._arrayToHeapTree(heapArr, n),
+      array: heapArr.map(x => ({ ...x })),
+      heapSize: n,
+      activeAction: 'extract_done',
+      highlights: { 0: 'sorted' },
+      message: `✓ Hoàn tất rút Max (${maxVal}) và vun đống lại! Max mới tại đỉnh là ${heapArr[0].value}.`,
+      codeLine: 5,
+      isTree: true
+    });
+
+    this.executeInteractiveSteps(extractSteps, `✓ Hoàn tất rút phần tử lớn nhất Max = ${maxVal} và vun đống lại!`);
+    this.checkPracticeProgress('extract');
+  }
+
+  handleHeapSortRun() {
+    player.pause();
+    state.computeSteps();
+    state.notify('stepChange');
+    player.play();
+    this.showFeedback('🔄 Đang chạy mô phỏng toàn bộ Heap Sort...', false);
+  }
+
+  handleHeapSample() {
+    player.pause();
+    state.generateRandomArray();
+    state.computeSteps();
+    state.notify('stepChange');
+    this.showFeedback('🎲 Đã tạo mảng ngẫu nhiên và vun đống Max-Heap mới!', false);
   }
 }

@@ -644,5 +644,567 @@ function binarySearch(arr, target) {
     }
     return -1;
 }`
+  },
+  stack: {
+    cpp: `// C++: Stack (Ngăn xếp mảng tĩnh / động)
+#include <iostream>
+#include <vector>
+using namespace std;
+
+class Stack {
+private:
+    vector<int> data;
+public:
+    void push(int val) {
+        data.push_back(val);
+    }
+    int pop() {
+        if (isEmpty()) throw runtime_error("Stack rỗng!");
+        int val = data.back();
+        data.pop_back();
+        return val;
+    }
+    int peek() const {
+        if (isEmpty()) throw runtime_error("Stack rỗng!");
+        return data.back();
+    }
+    bool isEmpty() const {
+        return data.empty();
+    }
+};`,
+    java: `// Java: Stack Implementation
+import java.util.ArrayList;
+
+public class MyStack {
+    private ArrayList<Integer> list = new ArrayList<>();
+
+    public void push(int val) {
+        list.add(val);
+    }
+    public int pop() {
+        if (isEmpty()) throw new IllegalStateException("Stack Underflow!");
+        return list.remove(list.size() - 1);
+    }
+    public int peek() {
+        if (isEmpty()) throw new IllegalStateException("Stack is empty!");
+        return list.get(list.size() - 1);
+    }
+    public boolean isEmpty() {
+        return list.isEmpty();
+    }
+}`,
+    python: `# Python: Stack Implementation
+class Stack:
+    def __init__(self):
+        self.items = []
+
+    def push(self, val):
+        self.items.append(val)
+
+    def pop(self):
+        if self.is_empty():
+            raise IndexError("Stack rỗng!")
+        return self.items.pop()
+
+    def peek(self):
+        if self.is_empty():
+            return None
+        return self.items[-1]
+
+    def is_empty(self):
+        return len(self.items) == 0`,
+    javascript: `// JavaScript: Stack Implementation
+class Stack {
+  constructor() {
+    this.items = [];
+  }
+  push(val) {
+    this.items.push(val);
+  }
+  pop() {
+    if (this.isEmpty()) return null;
+    return this.items.pop();
+  }
+  peek() {
+    return this.isEmpty() ? null : this.items[this.items.length - 1];
+  }
+  isEmpty() {
+    return this.items.length === 0;
+  }
+}`
+  },
+  queue: {
+    cpp: `// C++: Queue (Hàng đợi tuyến tính / vòng tròn)
+#include <iostream>
+#include <queue>
+using namespace std;
+
+class Queue {
+private:
+    vector<int> data;
+    int frontIdx = 0;
+public:
+    void enqueue(int val) {
+        data.push_back(val);
+    }
+    int dequeue() {
+        if (isEmpty()) throw runtime_error("Queue rỗng!");
+        return data[frontIdx++];
+    }
+    int front() const {
+        if (isEmpty()) throw runtime_error("Queue rỗng!");
+        return data[frontIdx];
+    }
+    bool isEmpty() const {
+        return frontIdx >= data.size();
+    }
+};`,
+    java: `// Java: Queue Implementation
+import java.util.LinkedList;
+
+public class MyQueue {
+    private LinkedList<Integer> list = new LinkedList<>();
+
+    public void enqueue(int val) {
+        list.addLast(val);
+    }
+    public int dequeue() {
+        if (isEmpty()) throw new IllegalStateException("Queue is empty!");
+        return list.removeFirst();
+    }
+    public int front() {
+        if (isEmpty()) throw new IllegalStateException("Queue is empty!");
+        return list.getFirst();
+    }
+    public boolean isEmpty() {
+        return list.isEmpty();
+    }
+}`,
+    python: `# Python: Queue Implementation (FIFO)
+from collections import deque
+
+class Queue:
+    def __init__(self):
+        self.items = deque()
+
+    def enqueue(self, val):
+        self.items.append(val)
+
+    def dequeue(self):
+        if self.is_empty():
+            raise IndexError("Queue rỗng!")
+        return self.items.popleft()
+
+    def front(self):
+        return self.items[0] if not self.is_empty() else None
+
+    def is_empty(self):
+        return len(self.items) == 0`,
+    javascript: `// JavaScript: Queue Implementation
+class Queue {
+  constructor() {
+    this.items = [];
+  }
+  enqueue(val) {
+    this.items.push(val);
+  }
+  dequeue() {
+    if (this.isEmpty()) return null;
+    return this.items.shift();
+  }
+  front() {
+    return this.isEmpty() ? null : this.items[0];
+  }
+  isEmpty() {
+    return this.items.length === 0;
+  }
+}`
+  },
+  linkedList: {
+    cpp: `// C++: Singly Linked List (Danh sách liên kết đơn)
+#include <iostream>
+using namespace std;
+
+struct Node {
+    int data;
+    Node* next;
+    Node(int val, Node* n = nullptr) : data(val), next(n) {}
+};
+
+class LinkedList {
+public:
+    Node* head = nullptr;
+
+    void insertHead(int val) {
+        head = new Node(val, head);
+    }
+
+    void insertTail(int val) {
+        if (!head) { head = new Node(val); return; }
+        Node* curr = head;
+        while (curr->next) curr = curr->next;
+        curr->next = new Node(val);
+    }
+
+    void reverse() {
+        Node *prev = nullptr, *curr = head, *next = nullptr;
+        while (curr) {
+            next = curr->next;
+            curr->next = prev;
+            prev = curr;
+            curr = next;
+        }
+        head = prev;
+    }
+};`,
+    java: `// Java: Singly Linked List
+class Node {
+    int data;
+    Node next;
+    Node(int data) { this.data = data; this.next = null; }
+}
+
+public class MyLinkedList {
+    Node head = null;
+
+    public void insertHead(int val) {
+        Node newNode = new Node(val);
+        newNode.next = head;
+        head = newNode;
+    }
+
+    public void reverse() {
+        Node prev = null, curr = head, next = null;
+        while (curr != null) {
+            next = curr.next;
+            curr.next = prev;
+            prev = curr;
+            curr = next;
+        }
+        head = prev;
+    }
+}`,
+    python: `# Python: Singly Linked List
+class Node:
+    def __init__(self, data, next=None):
+        self.data = data
+        self.next = next
+
+class LinkedList:
+    def __init__(self):
+        self.head = None
+
+    def insert_head(self, val):
+        self.head = Node(val, self.head)
+
+    def reverse(self):
+        prev = None
+        curr = self.head
+        while curr:
+            next_node = curr.next
+            curr.next = prev
+            prev = curr
+            curr = next_node
+        self.head = prev`,
+    javascript: `// JavaScript: Singly Linked List
+class Node {
+  constructor(data, next = null) {
+    this.data = data;
+    this.next = next;
+  }
+}
+
+class LinkedList {
+  constructor() {
+    this.head = null;
+  }
+  insertHead(val) {
+    this.head = new Node(val, this.head);
+  }
+  reverse() {
+    let prev = null, curr = this.head;
+    while (curr) {
+      const next = curr.next;
+      curr.next = prev;
+      prev = curr;
+      curr = next;
+    }
+    this.head = prev;
+  }
+}`
+  },
+  bst: {
+    cpp: `// C++: Binary Search Tree (BST)
+#include <iostream>
+using namespace std;
+
+struct Node {
+    int val;
+    Node *left = nullptr, *right = nullptr;
+    Node(int v) : val(v) {}
+};
+
+Node* insert(Node* root, int val) {
+    if (!root) return new Node(val);
+    if (val < root->val) root->left = insert(root->left, val);
+    else if (val > root->val) root->right = insert(root->right, val);
+    return root;
+}
+
+bool search(Node* root, int val) {
+    if (!root) return false;
+    if (root->val == val) return true;
+    if (val < root->val) return search(root->left, val);
+    return search(root->right, val);
+}
+
+void inorder(Node* root) {
+    if (!root) return;
+    inorder(root->left);
+    cout << root->val << " ";
+    inorder(root->right);
+}`,
+    java: `// Java: Binary Search Tree (BST)
+class Node {
+    int val;
+    Node left, right;
+    Node(int val) { this.val = val; }
+}
+
+public class BST {
+    public static Node insert(Node root, int val) {
+        if (root == null) return new Node(val);
+        if (val < root.val) root.left = insert(root.left, val);
+        else if (val > root.val) root.right = insert(root.right, val);
+        return root;
+    }
+
+    public static boolean search(Node root, int val) {
+        if (root == null) return false;
+        if (root.val == val) return true;
+        return val < root.val ? search(root.left, val) : search(root.right, val);
+    }
+}`,
+    python: `# Python: Binary Search Tree (BST)
+class Node:
+    def __init__(self, val):
+        self.val = val
+        self.left = None
+        self.right = None
+
+def insert(root, val):
+    if not root:
+        return Node(val)
+    if val < root.val:
+        root.left = insert(root.left, val)
+    elif val > root.val:
+        root.right = insert(root.right, val)
+    return root
+
+def search(root, val):
+    if not root or root.val == val:
+        return root
+    if val < root.val:
+        return search(root.left, val)
+    return search(root.right, val)`,
+    javascript: `// JavaScript: Binary Search Tree (BST)
+class Node {
+  constructor(val) {
+    this.val = val;
+    this.left = null;
+    this.right = null;
+  }
+}
+
+function insert(root, val) {
+  if (!root) return new Node(val);
+  if (val < root.val) root.left = insert(root.left, val);
+  else if (val > root.val) root.right = insert(root.right, val);
+  return root;
+}
+
+function search(root, val) {
+  if (!root || root.val === val) return root;
+  return val < root.val ? search(root.left, val) : search(root.right, val);
+}`
+  },
+  avlTree: {
+    cpp: `// C++: AVL Tree (Self-balancing BST)
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+struct Node {
+    int val, height = 1;
+    Node *left = nullptr, *right = nullptr;
+    Node(int v) : val(v) {}
+};
+
+int height(Node* n) { return n ? n->height : 0; }
+int getBF(Node* n) { return n ? height(n->left) - height(n->right) : 0; }
+
+Node* rotateRight(Node* y) {
+    Node* x = y->left; Node* T2 = x->right;
+    x->right = y; y->left = T2;
+    y->height = 1 + max(height(y->left), height(y->right));
+    x->height = 1 + max(height(x->left), height(x->right));
+    return x;
+}
+
+Node* rotateLeft(Node* x) {
+    Node* y = x->right; Node* T2 = y->left;
+    y->left = x; x->right = T2;
+    x->height = 1 + max(height(x->left), height(x->right));
+    y->height = 1 + max(height(y->left), height(y->right));
+    return y;
+}`,
+    java: `// Java: AVL Tree (Self-balancing BST)
+class AVLNode {
+    int val, height = 1;
+    AVLNode left, right;
+    AVLNode(int val) { this.val = val; }
+}
+
+public class AVLTree {
+    static int height(AVLNode n) { return n == null ? 0 : n.height; }
+    static int getBF(AVLNode n) { return n == null ? 0 : height(n.left) - height(n.right); }
+
+    static AVLNode rotateRight(AVLNode y) {
+        AVLNode x = y.left; AVLNode T2 = x.right;
+        x.right = y; y.left = T2;
+        y.height = 1 + Math.max(height(y.left), height(y.right));
+        x.height = 1 + Math.max(height(x.left), height(x.right));
+        return x;
+    }
+}`,
+    python: `# Python: AVL Tree Rotations
+class AVLNode:
+    def __init__(self, val):
+        self.val = val
+        self.height = 1
+        self.left = None
+        self.right = None
+
+def get_height(node):
+    return node.height if node else 0
+
+def get_balance(node):
+    return get_height(node.left) - get_height(node.right) if node else 0
+
+def rotate_right(y):
+    x = y.left
+    T2 = x.right
+    x.right = y
+    y.left = T2
+    y.height = 1 + max(get_height(y.left), get_height(y.right))
+    x.height = 1 + max(get_height(x.left), get_height(x.right))
+    return x`,
+    javascript: `// JavaScript: AVL Tree
+class AVLNode {
+  constructor(val) {
+    this.val = val;
+    this.height = 1;
+    this.left = null;
+    this.right = null;
+  }
+}
+
+function getHeight(n) { return n ? n.height : 0; }
+function getBF(n) { return n ? getHeight(n.left) - getHeight(n.right) : 0; }
+
+function rotateRight(y) {
+  const x = y.left; const T2 = x.right;
+  x.right = y; y.left = T2;
+  y.height = 1 + Math.max(getHeight(y.left), getHeight(y.right));
+  x.height = 1 + Math.max(getHeight(x.left), getHeight(x.right));
+  return x;
+}`
+  },
+  heap: {
+    cpp: `// C++: Max-Heap & Heap Sort
+#include <iostream>
+#include <vector>
+using namespace std;
+
+void heapify(vector<int>& arr, int n, int i) {
+    int largest = i, l = 2 * i + 1, r = 2 * i + 2;
+    if (l < n && arr[l] > arr[largest]) largest = l;
+    if (r < n && arr[r] > arr[largest]) largest = r;
+    if (largest != i) {
+        swap(arr[i], arr[largest]);
+        heapify(arr, n, largest);
+    }
+}
+
+void heapSort(vector<int>& arr) {
+    int n = arr.size();
+    // Build heap O(n)
+    for (int i = n / 2 - 1; i >= 0; i--) heapify(arr, n, i);
+    // Extract elements O(n log n)
+    for (int i = n - 1; i > 0; i--) {
+        swap(arr[0], arr[i]);
+        heapify(arr, i, 0);
+    }
+}`,
+    java: `// Java: Max-Heap & Heap Sort
+public class HeapSort {
+    public static void sort(int[] arr) {
+        int n = arr.length;
+        for (int i = n / 2 - 1; i >= 0; i--) heapify(arr, n, i);
+        for (int i = n - 1; i > 0; i--) {
+            int temp = arr[0]; arr[0] = arr[i]; arr[i] = temp;
+            heapify(arr, i, 0);
+        }
+    }
+
+    static void heapify(int[] arr, int n, int i) {
+        int largest = i, l = 2 * i + 1, r = 2 * i + 2;
+        if (l < n && arr[l] > arr[largest]) largest = l;
+        if (r < n && arr[r] > arr[largest]) largest = r;
+        if (largest != i) {
+            int temp = arr[i]; arr[i] = arr[largest]; arr[largest] = temp;
+            heapify(arr, n, largest);
+        }
+    }
+}`,
+    python: `# Python: Max-Heap & Heap Sort
+def heapify(arr, n, i):
+    largest = i
+    l = 2 * i + 1
+    r = 2 * i + 2
+    if l < n and arr[l] > arr[largest]:
+        largest = l
+    if r < n and arr[r] > arr[largest]:
+        largest = r
+    if largest != i:
+        arr[i], arr[largest] = arr[largest], arr[i]
+        heapify(arr, n, largest)
+
+def heap_sort(arr):
+    n = len(arr)
+    for i in range(n // 2 - 1, -1, -1):
+        heapify(arr, n, i)
+    for i in range(n - 1, 0, -1):
+        arr[0], arr[i] = arr[i], arr[0]
+        heapify(arr, i, 0)`,
+    javascript: `// JavaScript: Max-Heap & Heap Sort
+function heapify(arr, n, i) {
+  let largest = i, l = 2 * i + 1, r = 2 * i + 2;
+  if (l < n && arr[l] > arr[largest]) largest = l;
+  if (r < n && arr[r] > arr[largest]) largest = r;
+  if (largest !== i) {
+    [arr[i], arr[largest]] = [arr[largest], arr[i]];
+    heapify(arr, n, largest);
+  }
+}
+
+function heapSort(arr) {
+  const n = arr.length;
+  for (let i = Math.floor(n / 2) - 1; i >= 0; i--) heapify(arr, n, i);
+  for (let i = n - 1; i > 0; i--) {
+    [arr[0], arr[i]] = [arr[i], arr[0]];
+    heapify(arr, i, 0);
+  }
+}`
   }
 };

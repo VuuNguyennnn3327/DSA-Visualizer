@@ -99,6 +99,11 @@ export class InteractiveSortController {
    */
   showHint() {
     player.pause();
+    const algo = state.getCurrentAlgorithm();
+    if (algo && (algo.isLinear || algo.isTree)) {
+      return; // Do UIController xử lý gợi ý nhiệm vụ thực hành
+    }
+
     if (state.interactionMode === 'setup') {
       const msgText = document.getElementById('step-message-text');
       if (msgText) {

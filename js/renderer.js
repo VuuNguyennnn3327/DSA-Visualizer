@@ -56,8 +56,12 @@ export class Renderer {
   renderStep(step, algo, currentStepIndex, totalSteps, allSteps = []) {
     if (!step) return;
 
-    // 1. Cập nhật mảng chính (Cột sắp xếp dạng FLIP hoặc Ô số tìm kiếm)
-    if (algo.isSearch) {
+    // 1. Cập nhật giao diện chính theo loại cấu trúc dữ liệu / thuật toán
+    if (algo?.isTree || step.isTree) {
+      this.renderTreeStructure(step, algo);
+    } else if (algo?.isLinear || step.isLinear) {
+      this.renderLinearStructure(step, algo);
+    } else if (algo.isSearch) {
       this.renderSearchTiles(step, algo);
     } else {
       this.renderSortBars(step);
@@ -67,7 +71,33 @@ export class Renderer {
     this.renderAuxiliary(step.groups);
 
     // Phát âm thanh thuật toán tương ứng cho bước hiện tại khi chạy tự động hoặc bước thủ công
-    if (!step.isUserStep && step.highlights && step.array) {
+    if (step.isTree) {
+      if (step.isComplete) {
+        soundFX.playVictory([{ value: 25 }, { value: 50 }, { value: 75 }]);
+      } else if (step.activeAction?.includes('rotate') || step.activeAction?.includes('unbalanced')) {
+        soundFX.playSwap(60, 30);
+      } else if (step.activeAction?.includes('search_found')) {
+        soundFX.playCorrectDing();
+      } else if (step.activeAction?.includes('compare') || step.activeAction?.includes('search') || step.activeAction?.includes('heapify_check')) {
+        soundFX.playCompare(40, 50);
+      } else if (step.activeAction?.includes('insert') || step.activeAction?.includes('inorder_visit')) {
+        soundFX.playTone(step.activeItem || 50);
+      } else if (step.activeAction?.includes('swap')) {
+        soundFX.playSwap(50, 30);
+      }
+    } else if (step.isLinear) {
+      if (step.isComplete) {
+        soundFX.playVictory([{ value: 20 }, { value: 40 }, { value: 60 }]);
+      } else if (step.activeAction?.includes('push') || step.activeAction?.includes('enqueue') || step.activeAction?.includes('insert')) {
+        soundFX.playTone(step.activeItem || 45);
+      } else if (step.activeAction?.includes('pop') || step.activeAction?.includes('dequeue') || step.activeAction?.includes('delete')) {
+        soundFX.playSwap(step.activeItem || 50, 20);
+      } else if (step.activeAction?.includes('peek') || step.activeAction?.includes('search')) {
+        soundFX.playCompare(35, 55);
+      } else if (step.activeAction?.includes('reverse')) {
+        soundFX.playTone(60);
+      }
+    } else if (!step.isUserStep && step.highlights && step.array) {
       if (step.isComplete) {
         soundFX.playVictory(step.array);
       } else {
@@ -436,11 +466,568 @@ export class Renderer {
   }
 
   /**
+   * Điều hướng trực quan hóa Cấu trúc Cây (BST, AVL Tree, Binary Heap)
+   */
+  renderTreeStructure(step, algo) {
+    if (!this.canvasContainer) return;
+    this.canvasContainer.innerHTML = '';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'tree-canvas-wrapper';
+
+    const root = step.root;
+    const stageWidth = 640;
+    const initialY = 36;
+    const activeNodeId = step.activeNodeId;
+    const isFound = step.activeAction === 'search_found';
+
+    // Helper tính toán các chỉ số thống kê của cây
+    const getTreeMetrics = (node) => {
+      if (!node) return { count: 0, height: 0, leaves: 0 };
+      const left = getTreeMetrics(node.left);
+      const right = getTreeMetrics(node.right);
+      const isLeaf = !node.left && !node.right;
+      return {
+        count: 1 + left.count + right.count,
+        height: 1 + Math.max(left.height, right.height),
+        leaves: (isLeaf ? 1 : 0) + left.leaves + right.leaves
+      };
+    };
+
+    const metrics = getTreeMetrics(root);
+
+    // 1. Thanh thông số cây (Tree Metrics Pill)
+    if (root) {
+      const metricsEl = document.createElement('div');
+      metricsEl.className = 'tree-metrics-pill';
+      const treeTypeName = step.treeType === 'avl' ? 'Cây AVL' : (step.treeType === 'heap' ? 'Max-Heap' : 'Binary Search Tree');
+      metricsEl.innerHTML = `
+        <span>🌳 <strong>${treeTypeName}</strong></span>
+        <span>•</span>
+        <span>Tổng số Node: <strong>${metrics.count}</strong></span>
+        <span>•</span>
+        <span>Chiều cao H: <strong>${metrics.height}</strong></span>
+        <span>•</span>
+        <span>Số Node lá: <strong>${metrics.leaves}</strong></span>
+      `;
+      wrapper.appendChild(metricsEl);
+    }
+
+    // 2. Thanh kết quả duyệt trực quan (Live Traversal Strip)
+    if (step.traversalResult && step.traversalResult.length > 0) {
+      const travStrip = document.createElement('div');
+      travStrip.className = 'tree-traversal-strip';
+      const badges = step.traversalResult.map(v => `<span class="tree-traversal-badge">${v}</span>`).join('<span class="tree-traversal-arrow">➔</span>');
+      travStrip.innerHTML = `
+        <span class="tree-traversal-title">📋 ${step.traversalType || 'Thứ tự duyệt'}:</span>
+        <div class="tree-traversal-list">${badges}</div>
+      `;
+      wrapper.appendChild(travStrip);
+    }
+
+    const stage = document.createElement('div');
+    stage.className = 'tree-stage';
+
+    // Tự động tính toán chiều cao stage để không bị cắt node ở các tầng sâu
+    const dynamicStageHeight = Math.max(310, (metrics.height + 1) * 66 + 30);
+    stage.style.height = `${dynamicStageHeight}px`;
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'tree-svg-canvas');
+
+    if (!root) {
+      const emptyNote = document.createElement('div');
+      emptyNote.style.color = 'var(--text-muted)';
+      emptyNote.style.fontSize = '13.5px';
+      emptyNote.style.margin = '80px auto';
+      emptyNote.style.textAlign = 'center';
+      emptyNote.textContent = '🌳 Cây rỗng (Root = NULL)';
+      stage.appendChild(emptyNote);
+    } else {
+      // Đệ quy tính toán tọa độ và vẽ cạnh SVG + node HTML
+      const renderSubtree = (node, x, y, spread, depth) => {
+        if (!node) return;
+
+        // Vẽ cạnh nối sang con trái
+        if (node.left) {
+          const childX = x - spread;
+          const childY = y + 62;
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', x);
+          line.setAttribute('y1', y);
+          line.setAttribute('x2', childX);
+          line.setAttribute('y2', childY);
+          line.setAttribute('class', 'tree-edge-line');
+          svg.appendChild(line);
+          renderSubtree(node.left, childX, childY, spread * 0.52, depth + 1);
+        }
+
+        // Vẽ cạnh nối sang con phải
+        if (node.right) {
+          const childX = x + spread;
+          const childY = y + 62;
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', x);
+          line.setAttribute('y1', y);
+          line.setAttribute('x2', childX);
+          line.setAttribute('y2', childY);
+          line.setAttribute('class', 'tree-edge-line');
+          svg.appendChild(line);
+          renderSubtree(node.right, childX, childY, spread * 0.52, depth + 1);
+        }
+
+        // Node element
+        const nodeEl = document.createElement('div');
+        nodeEl.className = 'tree-node';
+        nodeEl.style.left = `${x}px`;
+        nodeEl.style.top = `${y}px`;
+        nodeEl.textContent = node.val;
+        nodeEl.title = `Khóa: ${node.val} | Con trái: ${node.left ? node.left.val : 'NULL'} | Con phải: ${node.right ? node.right.val : 'NULL'}`;
+
+        if (activeNodeId && (activeNodeId === node.id || (typeof activeNodeId === 'number' && node.val === activeNodeId))) {
+          if (isFound) nodeEl.classList.add('is-found');
+          else nodeEl.classList.add('is-active');
+        }
+
+        // Hiển thị Balance Factor cho cây AVL
+        if (step.treeType === 'avl' && typeof node.bf !== 'undefined') {
+          const bfTag = document.createElement('span');
+          bfTag.className = 'tree-node-bf';
+          bfTag.textContent = `BF:${node.bf >= 0 ? '+' : ''}${node.bf}`;
+          nodeEl.appendChild(bfTag);
+        }
+
+        stage.appendChild(nodeEl);
+      };
+
+      renderSubtree(root, stageWidth / 2, initialY, stageWidth * 0.24, 0);
+      stage.appendChild(svg);
+    }
+
+    wrapper.appendChild(stage);
+
+    // Nếu là Heap: Biểu diễn kép thêm thanh mảng 1D (Dual View)
+    if (step.treeType === 'heap' && step.array && step.array.length > 0) {
+      const heapStrip = document.createElement('div');
+      heapStrip.className = 'heap-array-strip';
+
+      const heapSize = typeof step.heapSize === 'number' ? step.heapSize : step.array.length;
+
+      step.array.forEach((item, idx) => {
+        const cell = document.createElement('div');
+        cell.className = 'heap-array-cell';
+
+        if (idx === 0) cell.classList.add('is-heap-root');
+        if (step.highlights && step.highlights[idx]) cell.classList.add('is-heap-active');
+        if (idx >= heapSize) cell.classList.add('is-heap-sorted');
+
+        cell.innerHTML = `
+          <span>${item.value}</span>
+          <span class="heap-cell-idx">[${idx}]</span>
+        `;
+        heapStrip.appendChild(cell);
+      });
+
+      const heapNote = document.createElement('div');
+      heapNote.style.fontSize = '12px';
+      heapNote.style.color = 'var(--text-muted)';
+      heapNote.style.marginTop = '6px';
+      heapNote.innerHTML = `Mảng 1D của Heap: Cha tại <code>i</code> &nbsp;➔&nbsp; Con trái <code>2i+1</code>, Con phải <code>2i+2</code> (HeapSize = ${heapSize})`;
+
+      wrapper.appendChild(heapStrip);
+      wrapper.appendChild(heapNote);
+    }
+
+    this.canvasContainer.appendChild(wrapper);
+  }
+
+  /**
+   * Điều hướng trực quan hóa Cấu trúc Dữ liệu Tuyến tính (Stack, Queue, Linked List)
+   */
+  renderLinearStructure(step, algo) {
+    if (!step) return;
+    const type = step.linearType || algo?.linearType;
+    if (type === 'stack') {
+      this.renderStack(step);
+    } else if (type === 'queue') {
+      this.renderQueue(step);
+    } else if (type === 'linkedList') {
+      this.renderLinkedList(step);
+    }
+  }
+
+  /**
+   * Trực quan hóa Ngăn Xếp (Stack - Ống đứng LIFO)
+   */
+  renderStack(step) {
+    if (!this.canvasContainer) return;
+    this.canvasContainer.innerHTML = '';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'stack-canvas-wrapper';
+
+    const tube = document.createElement('div');
+    tube.className = 'stack-tube';
+
+    const stackItems = step.stack || [];
+    const topIdx = step.top;
+
+    if (stackItems.length === 0) {
+      const emptyNote = document.createElement('div');
+      emptyNote.style.color = 'var(--text-muted)';
+      emptyNote.style.fontSize = '13px';
+      emptyNote.style.textAlign = 'center';
+      emptyNote.style.margin = 'auto';
+      emptyNote.textContent = '(Stack rỗng - Top = -1)';
+      tube.appendChild(emptyNote);
+    } else {
+      stackItems.forEach((item, idx) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'stack-item';
+        const isTop = idx === topIdx;
+        if (isTop) itemEl.classList.add('is-top');
+        if (step.activeAction && isTop) itemEl.classList.add('is-active-action');
+
+        itemEl.innerHTML = `
+          <span style="font-size: 11px; opacity: 0.6;">[${idx}]</span>
+          <span>${item.value}</span>
+        `;
+
+        if (isTop) {
+          const topBadge = document.createElement('span');
+          topBadge.className = 'stack-top-badge';
+          topBadge.innerHTML = '⬅ TOP';
+          itemEl.appendChild(topBadge);
+        }
+
+        tube.appendChild(itemEl);
+      });
+    }
+
+    const baseNote = document.createElement('div');
+    baseNote.className = 'stack-tube-base';
+    baseNote.innerHTML = `⏚ ĐÁY NGĂN XẾP (Bottom) • Sức chứa: ${stackItems.length}/${step.capacity || 8}`;
+
+    wrapper.appendChild(tube);
+    wrapper.appendChild(baseNote);
+    this.canvasContainer.appendChild(wrapper);
+  }
+
+  /**
+   * Trực quan hóa Hàng Đợi (Queue - Băng chuyền ngang FIFO)
+   */
+  renderQueue(step) {
+    if (!this.canvasContainer) return;
+    this.canvasContainer.innerHTML = '';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'queue-canvas-wrapper';
+
+    const channel = document.createElement('div');
+    channel.className = 'queue-channel';
+
+    const queueItems = step.queue || [];
+    const frontIdx = 0;
+    const rearIdx = queueItems.length - 1;
+
+    if (queueItems.length === 0) {
+      const emptyNote = document.createElement('div');
+      emptyNote.style.color = 'var(--text-muted)';
+      emptyNote.style.fontSize = '13px';
+      emptyNote.style.margin = 'auto';
+      emptyNote.textContent = '⇥ (Hàng đợi Queue rỗng - Size = 0) ⇤';
+      channel.appendChild(emptyNote);
+    } else {
+      queueItems.forEach((item, idx) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'queue-item';
+
+        const isFront = idx === frontIdx;
+        const isRear = idx === rearIdx;
+
+        if (isFront) itemEl.classList.add('is-front');
+        if (isRear) itemEl.classList.add('is-rear');
+
+        if (isFront && isRear) {
+          const badge = document.createElement('span');
+          badge.className = 'queue-pointer-label queue-pointer-front';
+          badge.textContent = 'FRONT & REAR';
+          itemEl.appendChild(badge);
+        } else if (isFront) {
+          const badge = document.createElement('span');
+          badge.className = 'queue-pointer-label queue-pointer-front';
+          badge.textContent = 'FRONT ⬇';
+          itemEl.appendChild(badge);
+        } else if (isRear) {
+          const badge = document.createElement('span');
+          badge.className = 'queue-pointer-label queue-pointer-rear';
+          badge.textContent = 'REAR ⬇';
+          itemEl.appendChild(badge);
+        }
+
+        const valSpan = document.createElement('span');
+        valSpan.textContent = item.value;
+        itemEl.appendChild(valSpan);
+
+        const idxSpan = document.createElement('span');
+        idxSpan.style.fontSize = '10px';
+        idxSpan.style.opacity = '0.6';
+        idxSpan.textContent = `[${idx}]`;
+        itemEl.appendChild(idxSpan);
+
+        channel.appendChild(itemEl);
+      });
+    }
+
+    const flowNote = document.createElement('div');
+    flowNote.style.marginTop = '12px';
+    flowNote.style.fontSize = '12px';
+    flowNote.style.color = 'var(--text-muted)';
+    flowNote.innerHTML = `⬅ Đầu lấy ra (Front / Dequeue) &nbsp;&nbsp;•&nbsp;&nbsp; Hướng luân chuyển FIFO &nbsp;&nbsp;•&nbsp;&nbsp; Đuôi thêm vào (Rear / Enqueue) ⬅`;
+
+    wrapper.appendChild(channel);
+    wrapper.appendChild(flowNote);
+    this.canvasContainer.appendChild(wrapper);
+  }
+
+  /**
+   * Trực quan hóa Danh Sách Liên Kết Đơn (Singly Linked List)
+   */
+  renderLinkedList(step) {
+    if (!this.canvasContainer) return;
+    this.canvasContainer.innerHTML = '';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'll-canvas-wrapper';
+
+    const nodes = step.nodes || [];
+    const pointers = step.pointers || {};
+    const activeNodeId = step.activeNodeId;
+    const isFound = step.activeAction === 'search_found';
+
+    if (nodes.length === 0) {
+      const nullHead = document.createElement('div');
+      nullHead.className = 'll-empty-notice';
+      nullHead.innerHTML = `
+        <div class="ll-null-badge is-head-null">
+          <span class="ll-null-icon">⏚</span>
+          <span>HEAD ➔ NULL</span>
+        </div>
+        <div class="ll-empty-text">Danh sách liên kết đang rỗng. Hãy bấm ➕ Thêm đầu hoặc ➕ Thêm đuôi để bắt đầu!</div>
+      `;
+      wrapper.appendChild(nullHead);
+    } else {
+      nodes.forEach((node, idx) => {
+        const card = document.createElement('div');
+        card.className = 'll-node-card';
+        if (activeNodeId === node.id) {
+          if (isFound) card.classList.add('is-found');
+          else card.classList.add('is-active');
+        }
+
+        // Pointer tags: HEAD, TAIL, CURR, PREV
+        if (pointers.head === node.id) {
+          const tag = document.createElement('span');
+          tag.className = 'll-pointer-tag ll-tag-head';
+          tag.textContent = 'HEAD ⬇';
+          card.appendChild(tag);
+        }
+        if (pointers.tail === node.id) {
+          const tag = document.createElement('span');
+          tag.className = 'll-pointer-tag ll-tag-tail';
+          tag.textContent = 'TAIL ⬇';
+          card.appendChild(tag);
+        }
+        if (pointers.curr === node.id) {
+          const tag = document.createElement('span');
+          tag.className = 'll-pointer-tag ll-tag-curr';
+          tag.textContent = 'CURR ⬇';
+          card.appendChild(tag);
+        }
+        if (pointers.prev === node.id) {
+          const tag = document.createElement('span');
+          tag.className = 'll-pointer-tag ll-tag-prev';
+          tag.textContent = 'PREV ⬇';
+          card.appendChild(tag);
+        }
+
+        // Inner Capsule: Khung 2 ngăn bo góc kín hoàn hảo, chống tràn nền và đứt viền
+        const capsule = document.createElement('div');
+        capsule.className = 'll-node-capsule';
+
+        // Ngăn 1: Data (Giá trị của Node)
+        const dataBox = document.createElement('div');
+        dataBox.className = 'll-node-data';
+        dataBox.textContent = node.value;
+        capsule.appendChild(dataBox);
+
+        // Ngăn 2: Next (Con trỏ trỏ tới node tiếp theo)
+        const nextBox = document.createElement('div');
+        nextBox.className = 'll-node-next';
+        nextBox.innerHTML = '<span class="ll-next-dot"></span><span class="ll-next-text">next</span>';
+        capsule.appendChild(nextBox);
+
+        card.appendChild(capsule);
+        wrapper.appendChild(card);
+
+        // Mũi tên vector liên kết sang node kế tiếp
+        const arrow = document.createElement('div');
+        arrow.className = 'll-arrow-connector';
+        arrow.innerHTML = `
+          <svg class="ll-arrow-svg" viewBox="0 0 28 16" width="24" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="2" y1="8" x2="22" y2="8"></line>
+            <polyline points="16 3 22 8 16 13"></polyline>
+          </svg>
+        `;
+        wrapper.appendChild(arrow);
+      });
+
+      // Node cuối cùng luôn trỏ về NULL
+      const nullNode = document.createElement('div');
+      nullNode.className = 'll-null-badge';
+      nullNode.innerHTML = '<span class="ll-null-icon">⏚</span><span>NULL</span>';
+      wrapper.appendChild(nullNode);
+    }
+
+    this.canvasContainer.appendChild(wrapper);
+  }
+
+  /**
    * Tạo định dạng hiển thị thực thi mảng trực quan (<->) theo từng bước
    * Mô phỏng chuẩn xác cách chạy tay từng bước trên giấy / bảng với vị trí cột cố định
    */
   getStepArrayExecution(step, algo) {
-    if (!step || !step.array || step.array.length === 0) {
+    if (!step) {
+      return {
+        actionBadge: '<span class="trace-action-badge init">Bắt đầu</span>',
+        arrayFlowHtml: '<span style="color: var(--text-muted);">-</span>'
+      };
+    }
+
+    // Hỗ trợ Bảng chạy tay cho Cấu trúc Cây (Tree DS: BST, AVL, Heap)
+    if (step.isTree) {
+      let actionBadge = '<span class="trace-action-badge init">ℹ Chi tiết</span>';
+      let arrayFlowHtml = '';
+
+      if (step.treeType === 'bst') {
+        if (step.activeAction?.includes('insert')) {
+          actionBadge = `<span class="trace-action-badge swp">➕ Chèn(${step.activeItem ?? ''})</span>`;
+        } else if (step.activeAction?.includes('delete')) {
+          actionBadge = `<span class="trace-action-badge err">🗑️ Xóa(${step.activeItem ?? ''})</span>`;
+        } else if (step.activeAction?.includes('search_found')) {
+          actionBadge = `<span class="trace-action-badge ok">★ Tìm thấy(${step.activeItem ?? ''})</span>`;
+        } else if (step.activeAction?.includes('search')) {
+          actionBadge = `<span class="trace-action-badge cmp">🔍 Tìm kiếm</span>`;
+        } else if (step.activeAction?.includes('inorder')) {
+          actionBadge = `<span class="trace-action-badge ok">📖 Inorder</span>`;
+        } else if (step.activeAction?.includes('preorder')) {
+          actionBadge = `<span class="trace-action-badge ok">🌿 Preorder</span>`;
+        } else if (step.activeAction?.includes('postorder')) {
+          actionBadge = `<span class="trace-action-badge ok">🍂 Postorder</span>`;
+        } else if (step.activeAction?.includes('level')) {
+          actionBadge = `<span class="trace-action-badge ok">🌊 BFS</span>`;
+        } else if (step.activeAction?.includes('min')) {
+          actionBadge = `<span class="trace-action-badge ok">🔻 Min(${step.activeItem ?? ''})</span>`;
+        } else if (step.activeAction?.includes('max')) {
+          actionBadge = `<span class="trace-action-badge ok">🔺 Max(${step.activeItem ?? ''})</span>`;
+        } else {
+          actionBadge = '<span class="trace-action-badge init">🌳 BST</span>';
+        }
+        arrayFlowHtml = `<span style="font-family:var(--font-mono); font-size:12px;">Root: ${step.root ? step.root.val : 'NULL'} | Đang xét: ${step.activeItem ?? '-'}</span>`;
+      } else if (step.treeType === 'avl') {
+        if (step.activeAction?.includes('unbalanced')) {
+          actionBadge = `<span class="trace-action-badge err">⚠️ Mất cân bằng</span>`;
+        } else if (step.activeAction?.includes('rotate')) {
+          actionBadge = `<span class="trace-action-badge swp">🔄 Phép xoay AVL</span>`;
+        } else if (step.activeAction?.includes('insert')) {
+          actionBadge = `<span class="trace-action-badge swp">➕ Chèn AVL</span>`;
+        } else {
+          actionBadge = '<span class="trace-action-badge init">⚖️ AVL Tree</span>';
+        }
+        arrayFlowHtml = `<span style="font-family:var(--font-mono); font-size:12px;">Root: ${step.root ? step.root.val : 'NULL'} (Tiêu chuẩn |BF| &le; 1)</span>`;
+      } else if (step.treeType === 'heap') {
+        if (step.activeAction?.includes('swap')) {
+          actionBadge = `<span class="trace-action-badge swp">🔄 Đổi chỗ Heap</span>`;
+        } else if (step.activeAction?.includes('heapify')) {
+          actionBadge = `<span class="trace-action-badge cmp">🔍 Vun đống</span>`;
+        } else if (step.activeAction?.includes('phase')) {
+          actionBadge = `<span class="trace-action-badge init">📌 Giai đoạn</span>`;
+        } else {
+          actionBadge = '<span class="trace-action-badge ok">🏔️ Max-Heap</span>';
+        }
+        const arrStr = step.array ? step.array.map(x => x.value).join(', ') : '';
+        arrayFlowHtml = `<span style="font-family:var(--font-mono); font-size:12px;">A = [ ${arrStr} ] (HeapSize: ${step.heapSize ?? '-'})</span>`;
+      }
+
+      return { actionBadge, arrayFlowHtml };
+    }
+
+    // Hỗ trợ Bảng chạy tay cho Cấu trúc Dữ liệu Tuyến tính (Linear DS)
+    if (step.isLinear) {
+      let actionBadge = '<span class="trace-action-badge init">ℹ Chi tiết</span>';
+      let arrayFlowHtml = '';
+
+      if (step.linearType === 'stack') {
+        const stk = step.stack || [];
+        if (step.activeAction?.includes('push')) {
+          actionBadge = `<span class="trace-action-badge swp">📥 Push(${step.activeItem ?? ''})</span>`;
+        } else if (step.activeAction?.includes('pop')) {
+          actionBadge = `<span class="trace-action-badge swp">📤 Pop()</span>`;
+        } else if (step.activeAction?.includes('peek')) {
+          actionBadge = `<span class="trace-action-badge cmp">👁 Peek</span>`;
+        } else {
+          actionBadge = '<span class="trace-action-badge init">🚀 Khởi tạo</span>';
+        }
+        const stkStr = stk.length > 0
+          ? stk.map((x, i) => i === step.top ? `<strong style="color:var(--primary);">${x.value} (TOP)</strong>` : `${x.value}`).join(' | ')
+          : '(Rỗng)';
+        arrayFlowHtml = `<span style="font-family:var(--font-mono); font-size:12px;">Đáy [ ${stkStr} ]</span>`;
+      } else if (step.linearType === 'queue') {
+        const q = step.queue || [];
+        if (step.activeAction?.includes('enqueue')) {
+          actionBadge = `<span class="trace-action-badge swp">📥 Enqueue(${step.activeItem ?? ''})</span>`;
+        } else if (step.activeAction?.includes('dequeue')) {
+          actionBadge = `<span class="trace-action-badge swp">📤 Dequeue()</span>`;
+        } else if (step.activeAction?.includes('peek')) {
+          actionBadge = `<span class="trace-action-badge cmp">👁 Front</span>`;
+        } else {
+          actionBadge = '<span class="trace-action-badge init">🚀 Khởi tạo</span>';
+        }
+        const qStr = q.length > 0
+          ? q.map(x => `[${x.value}]`).join(' ➔ ')
+          : '(Rỗng)';
+        arrayFlowHtml = `<span style="font-family:var(--font-mono); font-size:12px;">Front ➔ ${qStr} ➔ Rear</span>`;
+      } else if (step.linearType === 'linkedList') {
+        const nodes = step.nodes || [];
+        if (step.activeAction?.includes('insert_head')) {
+          actionBadge = `<span class="trace-action-badge swp">➕ Thêm đầu</span>`;
+        } else if (step.activeAction?.includes('insert_tail')) {
+          actionBadge = `<span class="trace-action-badge swp">➕ Thêm đuôi</span>`;
+        } else if (step.activeAction?.includes('delete_head')) {
+          actionBadge = `<span class="trace-action-badge err">🗑️ Xóa đầu</span>`;
+        } else if (step.activeAction?.includes('delete_tail')) {
+          actionBadge = `<span class="trace-action-badge err">🗑️ Xóa đuôi</span>`;
+        } else if (step.activeAction?.includes('clear')) {
+          actionBadge = `<span class="trace-action-badge err">🧹 Xóa rỗng</span>`;
+        } else if (step.activeAction?.includes('search_found')) {
+          actionBadge = `<span class="trace-action-badge ok">★ Tìm thấy(${step.activeItem ?? ''})</span>`;
+        } else if (step.activeAction?.includes('search')) {
+          actionBadge = `<span class="trace-action-badge cmp">🔍 Tìm(${step.activeItem ?? ''})</span>`;
+        } else if (step.activeAction?.includes('reverse')) {
+          actionBadge = `<span class="trace-action-badge swp">🔄 Đảo ngược</span>`;
+        } else {
+          actionBadge = '<span class="trace-action-badge init">🚀 Khởi tạo</span>';
+        }
+        const nodeStr = nodes.length > 0
+          ? nodes.map(n => `[${n.value}]`).join(' ➔ ')
+          : 'NULL';
+        arrayFlowHtml = `<span style="font-family:var(--font-mono); font-size:12px;">Head ➔ ${nodeStr}${nodes.length > 0 ? ' ➔ NULL' : ''}</span>`;
+      }
+
+      return { actionBadge, arrayFlowHtml };
+    }
+
+    if (!step.array || step.array.length === 0) {
       return {
         actionBadge: '<span class="trace-action-badge init">Bắt đầu</span>',
         arrayFlowHtml: '<span style="color: var(--text-muted);">-</span>'

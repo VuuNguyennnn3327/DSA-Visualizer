@@ -260,13 +260,15 @@ class AudioSynthesizer {
    * Khúc ca Chiến Thắng (Victory Fanfare): Quét toàn bộ mảng và bung hợp âm vinh quang
    */
   playVictory(array = []) {
-    if (!this.ensureContext() || !array || array.length === 0) return;
+    if (!this.ensureContext()) return;
     try {
-      const values = array.map(x => x.value);
+      const values = (array && array.length > 0)
+        ? array.map(x => (typeof x === 'object' && x !== null ? x.value : x))
+        : [50, 65, 75, 88, 100];
       const min = Math.min(...values);
       const max = Math.max(...values);
       const now = this.ctx.currentTime;
-      const stepInterval = Math.max(0.035, Math.min(0.07, 0.9 / array.length));
+      const stepInterval = Math.max(0.035, Math.min(0.07, 0.9 / values.length));
 
       // 1. Quét Arpeggio thăng hoa qua từng phần tử
       values.forEach((val, idx) => {

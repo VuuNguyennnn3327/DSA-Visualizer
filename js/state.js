@@ -116,6 +116,20 @@ class StateStore {
     const algo = this.getCurrentAlgorithm();
     const algoName = algo ? algo.name : '';
 
+    if (algo?.isLinear || algo?.isTree || algo?.isSearch) {
+      this.practiceStats = {
+        startTime: Date.now(),
+        correctCount: 0,
+        wrongCount: 0,
+        totalMoves: 0
+      };
+      this.computeSteps();
+      this.notify('modeChange');
+      this.notify('stepChange');
+      return;
+    }
+
+    // Với Thuật toán Sắp xếp (Sorting):
     if (mode === 'practice') {
       // Chốt mảng hiện tại làm mảng đề bài ban đầu
       this.initialPracticeArray = cloneArray(this.arrayData);
@@ -158,9 +172,6 @@ class StateStore {
    */
   restartPractice() {
     this.isPlaying = false;
-    if (this.initialPracticeArray && this.initialPracticeArray.length > 0) {
-      this.arrayData = cloneArray(this.initialPracticeArray);
-    }
     const algo = this.getCurrentAlgorithm();
     const algoName = algo ? algo.name : '';
 
@@ -170,6 +181,17 @@ class StateStore {
       wrongCount: 0,
       totalMoves: 0
     };
+
+    if (algo?.isLinear || algo?.isTree || algo?.isSearch) {
+      this.computeSteps();
+      this.notify('practiceRestart');
+      this.notify('stepChange');
+      return;
+    }
+
+    if (this.initialPracticeArray && this.initialPracticeArray.length > 0) {
+      this.arrayData = cloneArray(this.initialPracticeArray);
+    }
 
     this.steps = [{
       array: cloneArray(this.arrayData),
